@@ -56,7 +56,7 @@ export default function DashboardPage() {
   // Fetch reminders
   const fetchReminders = async () => {
     try {
-      const response = await axios.get(`https://sona-mona-careloop.vercel.app/api/reminders?user_id=${userId}`);
+      const response = await axios.get(`https://sona-mona-careloop-izqj0wwsz-vrushabhudegs-projects.vercel.app/api/reminders?user_id=${userId}`);
       if (response.data && response.data.length > 0) {
         const mapped = response.data.map((r: any) => ({
           id: r.id,
@@ -114,7 +114,7 @@ export default function DashboardPage() {
     }
 
     try {
-      await axios.post("https://sona-mona-careloop.vercel.app/api/reminders/history", {
+      await axios.post("https://sona-mona-careloop-izqj0wwsz-vrushabhudegs-projects.vercel.app/api/reminders/history", {
         reminder_id: reminder.id,
         user_id: userId,
         status: "completed",
@@ -140,7 +140,7 @@ export default function DashboardPage() {
     setShowAddModal(false);
 
     try {
-      await axios.post(`https://sona-mona-careloop.vercel.app/api/reminders?user_id=${userId}`, {
+      await axios.post(`https://sona-mona-careloop-izqj0wwsz-vrushabhudegs-projects.vercel.app/api/reminders?user_id=${userId}`, {
         title: newR.title,
         message: newR.message,
         schedule_time: newR.schedule_time,

@@ -63,7 +63,7 @@ export default function AdminDashboardPage() {
   // Fetch admin profiles from backend
   const fetchProfiles = async () => {
     try {
-      const response = await axios.get("https://sona-mona-careloop.vercel.app/api/admin/profiles");
+      const response = await axios.get("https://sona-mona-careloop-izqj0wwsz-vrushabhudegs-projects.vercel.app/api/admin/profiles");
       if (response.data && response.data.length > 0) {
         setUsers(response.data);
       } else {
