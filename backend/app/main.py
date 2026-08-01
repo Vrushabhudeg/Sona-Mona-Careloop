@@ -11,10 +11,7 @@ from uuid import UUID, uuid4
 import datetime
 
 # Automatically compile tables (fallback for local development)
-try:
-    Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"[Database Warning] Could not verify or create tables: {e}")
+# Database schema managed by Supabase schema.sql
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -246,3 +243,8 @@ def log_nutrition(user_id: UUID, log: schemas.NutritionLogCreate, db: Session = 
             "water_amount": log.water_amount,
             "logged_at": datetime.datetime.utcnow()
         }
+
+
+from mangum import Mangum
+
+handler = Mangum(app)
