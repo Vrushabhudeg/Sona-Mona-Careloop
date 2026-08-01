@@ -1,0 +1,16 @@
+{
+  "name": "CareLoop Bloom",
+  "short_name": "CareLoop",
+  "description": "A delightful, cute wellness space to track habits and receive sweet nudges.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0A0F",
+  "theme_color": "#FF7597",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
