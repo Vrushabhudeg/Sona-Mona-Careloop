@@ -170,7 +170,7 @@ export default function DashboardPage() {
     <div className="min-h-screen py-10 px-6 max-w-5xl mx-auto flex flex-col gap-8 select-none">
       
       {/* Top Navbar */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 pb-4">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF7597] to-[#9B86FA] flex items-center justify-center text-white text-sm font-bold shadow-md">
             ❤️
@@ -178,19 +178,19 @@ export default function DashboardPage() {
           <span className="font-outfit font-extrabold text-lg text-white">CareLoop</span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-xs text-[#A19AA8] hover:text-[#9B86FA] transition-colors font-semibold bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs font-semibold">
+          <Link href="/admin" className="text-[#A19AA8] hover:text-[#9B86FA] bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 transition-colors">
             Admin Panel
           </Link>
-          <Link href="/reels" className="text-xs text-[#A19AA8] hover:text-[#9B86FA] transition-colors font-semibold">
+          <Link href="/reels" className="text-[#A19AA8] hover:text-[#9B86FA] transition-colors">
             Yoga & Reels 🧘‍♀️
           </Link>
-          <Link href="/nutrition" className="text-xs text-[#A19AA8] hover:text-[#FF7597] transition-colors font-semibold">
+          <Link href="/nutrition" className="text-[#A19AA8] hover:text-[#FF7597] transition-colors">
             Nutrition 🍓
           </Link>
           <button 
             onClick={signOut}
-            className="text-xs text-[#A19AA8] hover:text-[#FF7597] flex items-center gap-1 transition-colors font-semibold cursor-pointer"
+            className="text-[#A19AA8] hover:text-[#FF7597] flex items-center gap-1 transition-colors cursor-pointer"
           >
             <LogOut size={12} /> Sign Out
           </button>

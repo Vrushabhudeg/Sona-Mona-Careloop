@@ -451,7 +451,8 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Table layout - visible on desktop */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-[#A19AA8] font-bold">
@@ -479,6 +480,29 @@ export default function AdminDashboardPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Cards layout - visible on mobile */}
+          <div className="block md:hidden flex flex-col gap-3">
+            {filteredUsers.map((user) => (
+              <div key={user.id} className="p-3 bg-white/3 border border-white/5 rounded-xl flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-white font-outfit">{user.full_name}</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] ${user.role === "Admin" ? "bg-[#FF7597]/20 text-[#FF7597]" : "bg-[#9B86FA]/20 text-[#9B86FA]"}`}>
+                    {user.role}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[11px] text-[#A19AA8] font-inter">
+                  <span className="truncate max-w-[160px]">{user.email}</span>
+                  <span>Joined: {user.joined}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] mt-1 border-t border-white/5 pt-2">
+                  <span className="text-[#A19AA8]">Active Reminders:</span>
+                  <span className="font-bold text-white bg-white/5 px-2 py-0.5 rounded">{user.reminders_count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
         </GlassCard>
 
         {/* Global stream logging */}
@@ -513,7 +537,8 @@ export default function AdminDashboardPage() {
           <p className="text-xs text-[#A19AA8] mt-0.5">Manage schedule times and delete user reminders across CareLoop.</p>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Table layout - visible on desktop */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-white/10 text-[#A19AA8] font-bold">
@@ -595,7 +620,7 @@ export default function AdminDashboardPage() {
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => handleDeleteReminder(rem.id)}
-                                  className="px-2 py-1 rounded-lg bg-[#FF7597]/20 text-[#FF7597] border border-[#FF7597]/30 hover:bg-[#FF7597]/35 transition-colors text-[10px] font-bold cursor-pointer"
+                                  className="px-2.5 py-1 rounded-lg bg-[#FF7597]/20 text-[#FF7597] border border-[#FF7597]/30 hover:bg-[#FF7597]/35 transition-colors text-[10px] font-bold cursor-pointer"
                                 >
                                   Confirm Delete
                                 </button>
@@ -637,6 +662,121 @@ export default function AdminDashboardPage() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Cards layout - visible on mobile */}
+        <div className="block md:hidden flex flex-col gap-4">
+          {mappedReminders.map((rem) => {
+            const isEditing = editingReminderId === rem.id;
+
+            return (
+              <div key={rem.id} className="p-4 rounded-2xl bg-white/3 border border-white/5 flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold font-outfit text-sm text-[#9B86FA]">{rem.user_name}</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] ${rem.is_active ? "bg-[#67E8A5]/20 text-[#67E8A5]" : "bg-white/10 text-[#A19AA8]"}`}>
+                    {rem.is_active ? "Active" : "Inactive"}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-semibold text-white">{rem.title}</span>
+                  {isEditing ? (
+                    <div className="flex flex-col gap-2 mt-1">
+                      <label className="text-[10px] text-[#A19AA8] font-bold uppercase">Reminder Message</label>
+                      <textarea
+                        value={editingMessage}
+                        onChange={(e) => setEditingMessage(e.target.value)}
+                        rows={2}
+                        className="bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white w-full focus:outline-none focus:border-[#9B86FA] resize-none"
+                      />
+                      <label className="text-[10px] text-[#A19AA8] font-bold uppercase mt-1">Scheduled Time</label>
+                      <input
+                        type="text"
+                        value={editingTime}
+                        onChange={(e) => setEditingTime(e.target.value)}
+                        className="bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white w-full max-w-[120px] focus:outline-none focus:border-[#9B86FA]"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#A19AA8] leading-relaxed mt-0.5">{rem.message}</p>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-1">
+                  <div>
+                    {!isEditing && (
+                      <span className="text-[11px] font-semibold text-white bg-white/5 border border-white/5 px-2 py-1 rounded-lg">
+                        ⏰ {rem.schedule_time}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={() => handleUpdateReminderData(rem.id, editingTime, editingMessage)}
+                          className="px-3 py-1.5 rounded-lg bg-[#67E8A5]/15 text-[#67E8A5] border border-[#67E8A5]/25 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <Check size={12} /> Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingReminderId(null);
+                            setEditingTime("");
+                            setEditingMessage("");
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-white/5 text-[#A19AA8] border border-white/5 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <X size={12} /> Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {deletingReminderId === rem.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleDeleteReminder(rem.id)}
+                              className="px-2.5 py-1 rounded-lg bg-[#FF7597]/20 text-[#FF7597] border border-[#FF7597]/30 hover:bg-[#FF7597]/35 transition-colors text-[10px] font-bold cursor-pointer"
+                            >
+                              Confirm Delete
+                            </button>
+                            <button
+                              onClick={() => setDeletingReminderId(null)}
+                              className="p-1 rounded-lg bg-white/5 text-[#A19AA8] border border-white/5 hover:bg-white/10 text-[10px] font-bold cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingReminderId(rem.id);
+                                setEditingTime(rem.schedule_time);
+                                setEditingMessage(rem.message);
+                              }}
+                              className="p-2 rounded-xl bg-white/5 border border-white/5 text-[#A19AA8] hover:text-[#9B86FA] hover:bg-[#9B86FA]/10 transition-all cursor-pointer"
+                              title="Edit Reminder"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              onClick={() => setDeletingReminderId(rem.id)}
+                              className="p-2 rounded-xl bg-white/5 border border-white/5 text-[#A19AA8] hover:text-[#FF7597] hover:bg-[#FF7597]/10 transition-all cursor-pointer"
+                              title="Delete Reminder"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </GlassCard>
 

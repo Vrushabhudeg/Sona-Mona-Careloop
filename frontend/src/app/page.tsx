@@ -15,29 +15,29 @@ export default function LandingPage() {
       
       {/* Premium Glassy Navbar */}
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0B0A0F]/60 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity shrink-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF7597] to-[#9B86FA] flex items-center justify-center text-white shadow-md cute-shadow-pink font-bold">
               ❤️
             </div>
-            <span className="font-outfit font-extrabold text-xl bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+            <span className="font-outfit font-extrabold text-lg sm:text-xl bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
               CareLoop
             </span>
           </Link>
           
-          <nav className="flex items-center gap-6">
-            <Link href="/reels" className="text-sm font-medium text-[#A19AA8] hover:text-[#9B86FA] transition-colors flex items-center gap-1.5">
-              <Dumbbell size={14} /> Yoga & Reels
+          <nav className="flex items-center gap-2.5 sm:gap-6 text-xs sm:text-sm">
+            <Link href="/reels" className="font-medium text-[#A19AA8] hover:text-[#9B86FA] transition-colors flex items-center gap-1">
+              <Dumbbell size={14} /> <span className="hidden min-[480px]:inline">Yoga & Reels</span>
             </Link>
-            <Link href="/nutrition" className="text-sm font-medium text-[#A19AA8] hover:text-[#FF7597] transition-colors flex items-center gap-1.5">
-              <Apple size={14} /> Nutrition
+            <Link href="/nutrition" className="font-medium text-[#A19AA8] hover:text-[#FF7597] transition-colors flex items-center gap-1">
+              <Apple size={14} /> <span className="hidden min-[480px]:inline">Nutrition</span>
             </Link>
-            <Link href="/login" className="text-sm font-medium text-[#A19AA8] hover:text-[#9B86FA] transition-colors">
+            <Link href="/login" className="font-medium text-[#A19AA8] hover:text-[#9B86FA] transition-colors">
               Sign In
             </Link>
             <Link 
               href="/signup" 
-              className="py-2 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#FF7597] to-[#9B86FA] hover:opacity-95 active:scale-95 transition-all duration-150 shadow-md cute-shadow-pink"
+              className="py-1.5 px-3 sm:py-2 sm:px-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#FF7597] to-[#9B86FA] hover:opacity-95 active:scale-95 transition-all duration-150 shadow-md cute-shadow-pink text-[10px] sm:text-xs shrink-0"
             >
               Get Started
             </Link>

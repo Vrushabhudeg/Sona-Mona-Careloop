@@ -555,20 +555,20 @@ export default function NutritionPage() {
     <div className="min-h-screen py-8 px-4 sm:px-6 max-w-5xl mx-auto flex flex-col gap-6 select-none">
       
       {/* Top Navigation */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 pb-4">
         <Link 
           href="/" 
-          className="flex items-center gap-2 text-sm text-[#A19AA8] hover:text-[#FF7597] transition-colors font-medium"
+          className="flex items-center gap-2 text-sm text-[#A19AA8] hover:text-[#FF7597] transition-colors font-medium self-start sm:self-auto"
         >
           <ArrowLeft size={16} /> Back to home
         </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/reels" className="text-xs text-[#A19AA8] hover:text-[#9B86FA] transition-colors font-semibold">
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-semibold">
+          <Link href="/reels" className="text-[#A19AA8] hover:text-[#9B86FA] transition-colors">
             Yoga & Reels 🧘‍♀️
           </Link>
-          <div className="flex items-center gap-2">
-            <span className="text-[#FF7597]">❤️</span>
-            <span className="font-outfit font-extrabold text-base sm:text-lg text-white">CareLoop Bloom for Sona</span>
+          <div className="flex items-center gap-1.5 text-white">
+            <span>❤️</span>
+            <span className="font-outfit font-extrabold">CareLoop Bloom for Sona</span>
           </div>
         </div>
       </div>
