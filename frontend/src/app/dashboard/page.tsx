@@ -182,6 +182,9 @@ export default function DashboardPage() {
           <Link href="/admin" className="text-xs text-[#A19AA8] hover:text-[#9B86FA] transition-colors font-semibold bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
             Admin Panel
           </Link>
+          <Link href="/reels" className="text-xs text-[#A19AA8] hover:text-[#9B86FA] transition-colors font-semibold">
+            Yoga & Reels 🧘‍♀️
+          </Link>
           <Link href="/nutrition" className="text-xs text-[#A19AA8] hover:text-[#FF7597] transition-colors font-semibold">
             Nutrition 🍓
           </Link>

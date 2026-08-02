@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Heart, Sparkles, ArrowRight, Smile, Activity, Apple } from "lucide-react";
+import { Heart, Sparkles, ArrowRight, Smile, Activity, Apple, Dumbbell } from "lucide-react";
 import { PhoneMockup } from "@/components/landing/phone-mockup";
 import { CuteReminder } from "@/components/ui/cute-reminder";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -26,6 +26,9 @@ export default function LandingPage() {
           </Link>
           
           <nav className="flex items-center gap-6">
+            <Link href="/reels" className="text-sm font-medium text-[#A19AA8] hover:text-[#9B86FA] transition-colors flex items-center gap-1.5">
+              <Dumbbell size={14} /> Yoga & Reels
+            </Link>
             <Link href="/nutrition" className="text-sm font-medium text-[#A19AA8] hover:text-[#FF7597] transition-colors flex items-center gap-1.5">
               <Apple size={14} /> Nutrition
             </Link>

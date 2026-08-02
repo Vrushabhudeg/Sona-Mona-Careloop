@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Users, Bell, BarChart2, Shield, Search, Send, Clock, Sparkles } from "lucide-react";
+import { ArrowLeft, Users, Bell, BarChart2, Shield, Search, Send, Clock, Sparkles, Edit2, Check, Trash2, X } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import axios from "axios";
 import confetti from "canvas-confetti";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+
 
 interface AdminProfile {
   id: string;
@@ -18,6 +19,17 @@ interface AdminProfile {
   reminders_count: number;
   joined: string;
 }
+
+interface AdminReminder {
+  id: string;
+  user_id: string;
+  user_name?: string;
+  title: string;
+  message: string;
+  schedule_time: string;
+  is_active: boolean;
+}
+
 
 interface AdminLog {
   id: string;
@@ -46,6 +58,15 @@ export default function AdminDashboardPage() {
   const [adminLogs, setAdminLogs] = useState<AdminLog[]>([]);
   const [nudgeSuccess, setNudgeSuccess] = useState("");
 
+  // Reminders Manager States
+  const [reminders, setReminders] = useState<AdminReminder[]>([]);
+  const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
+  const [editingTime, setEditingTime] = useState("");
+  const [editingMessage, setEditingMessage] = useState("");
+  const [deletingReminderId, setDeletingReminderId] = useState<string | null>(null);
+
+
+
   const defaultUsers: AdminProfile[] = [
     { id: "u1", full_name: "Sona", email: "sona@careloop.app", role: "User", reminders_count: 4, joined: "2026-07-28" },
     { id: "u2", full_name: "David Miller", email: "david@bloom.io", role: "User", reminders_count: 3, joined: "2026-07-29" },
@@ -58,6 +79,13 @@ export default function AdminDashboardPage() {
     { id: "l2", user_name: "David Miller", action: "Snoozed 'Morning Stretch'", time: "4 mins ago", type: "snoozed" },
     { id: "l3", user_name: "Emily Watson", action: "Logged meal 'Avocado Salad Toast'", time: "12 mins ago", type: "nutrition" },
     { id: "l4", user_name: "Sona", action: "Completed 'Healthy Lunch'", time: "1 hr ago", type: "completed" },
+  ];
+
+  const defaultReminders: AdminReminder[] = [
+    { id: "r1", user_id: "u1", user_name: "Sona", title: "🏃 Night Walk", message: "Time for a gentle walk at night to clear your mind. 🌙", schedule_time: "10:00 PM", is_active: true },
+    { id: "r2", user_id: "u1", user_name: "Sona", title: "🛌 Time to Sleep", message: "Time to sleep! Sleep tight, Sona. 😴", schedule_time: "12:00 AM", is_active: true },
+    { id: "r3", user_id: "u2", user_name: "David Miller", title: "💧 Hydration Break", message: "Drink a glass of water. Stay fresh!", schedule_time: "11:00 AM", is_active: true },
+    { id: "r4", user_id: "u3", user_name: "Emily Watson", title: "🧘 Stretch & Breathe", message: "5 minutes of stretching to relax your spine.", schedule_time: "03:30 PM", is_active: true },
   ];
 
   // Fetch admin profiles from backend
@@ -75,10 +103,106 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Fetch reminders across all users from backend
+  const fetchReminders = async () => {
+    try {
+      const response = await axios.get("https://sona-mona-careloop-api.vercel.app/api/admin/reminders");
+      if (response.data && response.data.length > 0) {
+        setReminders(response.data);
+      } else {
+        setReminders(defaultReminders);
+      }
+    } catch (err) {
+      console.warn("Backend API not reachable. Loading default admin reminders.");
+      setReminders(defaultReminders);
+    }
+  };
+
   useEffect(() => {
     fetchProfiles();
+    fetchReminders();
     setAdminLogs(defaultLogs);
   }, []);
+
+  const handleUpdateReminderData = async (reminderId: string, newTime: string, newMessage: string) => {
+    if (!newTime.trim()) return;
+
+    // Optimistically update screen
+    setReminders(prev => prev.map(r => r.id === reminderId ? { ...r, schedule_time: newTime, message: newMessage } : r));
+    setEditingReminderId(null);
+    setEditingTime("");
+    setEditingMessage("");
+
+    // Update backend API
+    try {
+      await axios.put(`https://sona-mona-careloop-api.vercel.app/api/reminders/${reminderId}`, {
+        schedule_time: newTime,
+        message: newMessage
+      });
+
+      // Add to admin activity log
+      const matchedTitle = reminders.find(r => r.id === reminderId)?.title || "Reminder";
+      const newLog: AdminLog = {
+        id: Date.now().toString(),
+        user_name: "Admin",
+        action: `Updated reminder "${matchedTitle}" (time: ${newTime}, message: "${newMessage}")`,
+        time: "Just now",
+        type: "nudge"
+      };
+      setAdminLogs(prev => [newLog, ...prev]);
+
+      confetti({
+        particleCount: 30,
+        spread: 35,
+        colors: ["#9B86FA", "#67E8A5"]
+      });
+    } catch (err) {
+      console.warn("Could not save updated reminder to backend database.");
+    }
+  };
+
+  const handleDeleteReminder = async (reminderId: string) => {
+    const matched = reminders.find(r => r.id === reminderId);
+    if (!matched) return;
+
+    // Optimistically update screen
+    setReminders(prev => prev.filter(r => r.id !== reminderId));
+    setDeletingReminderId(null);
+
+    // Update backend API
+    try {
+      await axios.delete(`https://sona-mona-careloop-api.vercel.app/api/reminders/${reminderId}`);
+
+      // Add to admin activity log
+      const newLog: AdminLog = {
+        id: Date.now().toString(),
+        user_name: "Admin",
+        action: `Deleted reminder "${matched.title}"`,
+        time: "Just now",
+        type: "completed"
+      };
+      setAdminLogs(prev => [newLog, ...prev]);
+
+      confetti({
+        particleCount: 25,
+        spread: 30,
+        colors: ["#FF7597", "#FFD075"]
+      });
+    } catch (err) {
+      console.warn("Could not delete reminder from backend database.");
+    }
+  };
+
+
+  // Map reminders to include username if fetched
+  const mappedReminders = reminders.map(rem => {
+    const matchedUser = users.find(u => u.id === rem.user_id);
+    return {
+      ...rem,
+      user_name: matchedUser ? matchedUser.full_name : (rem.user_name || "User")
+    };
+  });
+
 
   const handleSendNudge = (e: React.FormEvent) => {
     e.preventDefault();
@@ -379,7 +503,142 @@ export default function AdminDashboardPage() {
           </div>
         </GlassCard>
 
+      {/* Reminders Grid Row */}
       </div>
+
+      {/* Active Reminders Registry */}
+      <GlassCard glowColor="pink" className="w-full flex flex-col gap-5 mt-4">
+        <div>
+          <h3 className="font-bold font-outfit text-md text-white">System Active Reminders Registry</h3>
+          <p className="text-xs text-[#A19AA8] mt-0.5">Manage schedule times and delete user reminders across CareLoop.</p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-white/10 text-[#A19AA8] font-bold">
+                <th className="pb-3 pr-2">User Name</th>
+                <th className="pb-3 pr-2">Reminder Title</th>
+                <th className="pb-3 pr-2">Message Nudge</th>
+                <th className="pb-3 pr-2">Scheduled Time</th>
+                <th className="pb-3 pr-2">Status</th>
+                <th className="pb-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-[#F3F1F6] font-medium font-inter">
+              {mappedReminders.map((rem) => {
+                const isEditing = editingReminderId === rem.id;
+
+                return (
+                  <tr key={rem.id} className="hover:bg-white/2 transition-colors">
+                    <td className="py-3 pr-2 font-semibold font-outfit text-[#9B86FA]">{rem.user_name}</td>
+                    <td className="py-3 pr-2 text-white font-semibold font-outfit">{rem.title}</td>
+                    <td className="py-3 pr-2">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editingMessage}
+                          onChange={(e) => setEditingMessage(e.target.value)}
+                          className="bg-white/5 border border-white/15 rounded-lg px-2 py-1 text-xs text-white w-full max-w-[200px] focus:outline-none focus:border-[#9B86FA]"
+                        />
+                      ) : (
+                        <span className="text-[#A19AA8] max-w-xs truncate block" title={rem.message}>
+                          {rem.message}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-2">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editingTime}
+                          onChange={(e) => setEditingTime(e.target.value)}
+                          className="bg-white/5 border border-white/15 rounded-lg px-2 py-1 text-xs text-white w-20 focus:outline-none focus:border-[#9B86FA]"
+                        />
+                      ) : (
+                        <span className="font-semibold text-white bg-white/5 border border-white/5 px-2 py-1 rounded-lg">
+                          {rem.schedule_time}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-2">
+                      <span className={`px-2 py-0.5 rounded text-[10px] ${rem.is_active ? "bg-[#67E8A5]/20 text-[#67E8A5]" : "bg-white/10 text-[#A19AA8]"}`}>
+                        {rem.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="py-3 text-right">
+                      <div className="flex justify-end items-center gap-2">
+                        {isEditing ? (
+                          <>
+                            <button
+                              onClick={() => handleUpdateReminderData(rem.id, editingTime, editingMessage)}
+                              className="p-1.5 rounded-lg bg-[#67E8A5]/15 text-[#67E8A5] border border-[#67E8A5]/25 hover:bg-[#67E8A5]/25 transition-colors cursor-pointer"
+                              title="Save Changes"
+                            >
+                              <Check size={12} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingReminderId(null);
+                                setEditingTime("");
+                                setEditingMessage("");
+                              }}
+                              className="p-1.5 rounded-lg bg-white/5 text-[#A19AA8] border border-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                              title="Cancel"
+                            >
+                              <X size={12} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {deletingReminderId === rem.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleDeleteReminder(rem.id)}
+                                  className="px-2 py-1 rounded-lg bg-[#FF7597]/20 text-[#FF7597] border border-[#FF7597]/30 hover:bg-[#FF7597]/35 transition-colors text-[10px] font-bold cursor-pointer"
+                                >
+                                  Confirm Delete
+                                </button>
+                                <button
+                                  onClick={() => setDeletingReminderId(null)}
+                                  className="p-1 rounded-lg bg-white/5 text-[#A19AA8] border border-white/5 hover:bg-white/10 text-[10px] font-bold cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setEditingReminderId(rem.id);
+                                    setEditingTime(rem.schedule_time);
+                                    setEditingMessage(rem.message);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-[#A19AA8] hover:text-[#9B86FA] hover:bg-[#9B86FA]/10 transition-all cursor-pointer"
+                                  title="Edit Reminder"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
+                                <button
+                                  onClick={() => setDeletingReminderId(rem.id)}
+                                  className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-[#A19AA8] hover:text-[#FF7597] hover:bg-[#FF7597]/10 transition-all cursor-pointer"
+                                  title="Delete Reminder"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </GlassCard>
 
     </div>
   );

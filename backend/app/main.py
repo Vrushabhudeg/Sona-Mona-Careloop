@@ -101,6 +101,16 @@ def admin_get_profiles(db: Session = Depends(get_db)):
             {"id": uuid4(), "email": "emily@wellness.com", "full_name": "Emily Watson", "avatar_url": "", "role": "user", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
         ]
 
+# --- ADMIN REMINDERS DIRECTORY ---
+@app.get("/api/admin/reminders", response_model=List[schemas.ReminderResponse])
+def admin_get_all_reminders(db: Session = Depends(get_db)):
+    try:
+        reminders = db.query(models.Reminder).all()
+        return reminders
+    except Exception:
+        return []
+
+
 # --- REMINDERS API CRUD ---
 @app.get("/api/reminders", response_model=List[schemas.ReminderResponse])
 def get_reminders(user_id: UUID, db: Session = Depends(get_db)):
@@ -243,6 +253,18 @@ def log_nutrition(user_id: UUID, log: schemas.NutritionLogCreate, db: Session = 
             "water_amount": log.water_amount,
             "logged_at": datetime.datetime.utcnow()
         }
+
+@app.delete("/api/nutrition/{log_id}")
+def delete_nutrition_log(log_id: UUID, db: Session = Depends(get_db)):
+    try:
+        db_log = db.query(models.NutritionLog).filter(models.NutritionLog.id == log_id).first()
+        if not db_log:
+            raise HTTPException(status_code=404, detail="Nutrition log not found")
+        db.delete(db_log)
+        db.commit()
+        return {"status": "success", "message": "Nutrition log deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 from mangum import Mangum

@@ -13,6 +13,8 @@ import { CuteSonaMonaNote } from "@/components/ui/cute-sona-mona-note";
 import confetti from "canvas-confetti";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import axios from "axios";
+
 
 interface LoggedMeal {
   id: string;
@@ -27,12 +29,14 @@ interface LoggedMeal {
 export default function NutritionPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const userId = user?.id || "d3b07384-d113-4ec6-a558-7e3077dd7d7b";
 
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
     }
   }, [user, loading, router]);
+
 
   const [meals, setMeals] = useState<LoggedMeal[]>([]);
   const [water, setWater] = useState<number>(0); // in ml
@@ -58,15 +62,61 @@ export default function NutritionPage() {
   const FAT_TARGET = 50; // g
   const WATER_TARGET = 2000; // ml
 
-  // Load from localStorage
+  // Load from database (and fallback to localStorage)
+  const fetchNutritionLogs = async () => {
+    try {
+      const response = await axios.get(`https://sona-mona-careloop-api.vercel.app/api/nutrition?user_id=${userId}`);
+      if (response.data && Array.isArray(response.data)) {
+        // Filter logs only for TODAY
+        const todayLogs = response.data.filter((log: any) => {
+          const logDate = new Date(log.logged_at);
+          const today = new Date();
+          return logDate.getDate() === today.getDate() &&
+                 logDate.getMonth() === today.getMonth() &&
+                 logDate.getFullYear() === today.getFullYear();
+        });
+
+        // Parse meals
+        const dbMeals = todayLogs
+          .filter((log: any) => log.meal_type !== "water")
+          .map((log: any) => ({
+            id: log.id,
+            type: log.meal_type,
+            name: log.food_name || "Custom Meal",
+            calories: log.calories || 0,
+            protein: log.protein || 0,
+            carbs: log.carbs || 0,
+            fat: log.fat || 0,
+          }));
+
+        // Compute water
+        const dbWater = todayLogs
+          .filter((log: any) => log.meal_type === "water")
+          .reduce((sum: number, log: any) => sum + (log.water_amount || 0), 0);
+
+        setMeals(dbMeals);
+        setWater(dbWater);
+
+        localStorage.setItem("careloop_meals", JSON.stringify(dbMeals));
+        localStorage.setItem("careloop_water", dbWater.toString());
+      }
+    } catch (err) {
+      console.warn("Backend API not reachable. Loading from localStorage cache.");
+      const savedMeals = localStorage.getItem("careloop_meals");
+      const savedWater = localStorage.getItem("careloop_water");
+      if (savedMeals) setMeals(JSON.parse(savedMeals));
+      if (savedWater) setWater(Number(savedWater));
+    }
+  };
+
   useEffect(() => {
-    const savedMeals = localStorage.getItem("careloop_meals");
-    const savedWater = localStorage.getItem("careloop_water");
     const savedGroceries = localStorage.getItem("careloop_groceries");
-    if (savedMeals) setMeals(JSON.parse(savedMeals));
-    if (savedWater) setWater(Number(savedWater));
     if (savedGroceries) setCheckedGroceries(JSON.parse(savedGroceries));
-  }, []);
+
+    if (userId) {
+      fetchNutritionLogs();
+    }
+  }, [userId]);
 
   const saveMealsToLocal = (newMeals: LoggedMeal[]) => {
     setMeals(newMeals);
@@ -85,7 +135,7 @@ export default function NutritionPage() {
   };
 
   // Add water
-  const handleAddWater = (amount: number) => {
+  const handleAddWater = async (amount: number) => {
     const nextWater = Math.min(water + amount, WATER_TARGET * 1.5);
     saveWaterToLocal(nextWater);
 
@@ -103,15 +153,31 @@ export default function NutritionPage() {
         colors: ["#9B86FA", "#FF7597"],
       });
     }
+
+    // Sync water log to backend database
+    try {
+      await axios.post(`https://sona-mona-careloop-api.vercel.app/api/nutrition?user_id=${userId}`, {
+        meal_type: "water",
+        food_name: "Water",
+        calories: 0.0,
+        protein: 0.0,
+        carbs: 0.0,
+        fat: 0.0,
+        water_amount: amount
+      });
+    } catch (err) {
+      console.warn("Could not save water to backend database.");
+    }
   };
 
   // Add custom meal log
-  const handleAddMeal = (e: React.FormEvent) => {
+  const handleAddMeal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mealName.trim()) return;
 
+    const tempId = "temp-" + Date.now();
     const newMeal: LoggedMeal = {
-      id: Date.now().toString(),
+      id: tempId,
       type: mealType,
       name: mealName.trim(),
       calories: Number(calories) || 0,
@@ -136,10 +202,30 @@ export default function NutritionPage() {
       spread: 45,
       colors: ["#FF7597", "#9B86FA"],
     });
+
+    // Save to backend database
+    try {
+      const response = await axios.post(`https://sona-mona-careloop-api.vercel.app/api/nutrition?user_id=${userId}`, {
+        meal_type: mealType,
+        food_name: newMeal.name,
+        calories: newMeal.calories,
+        protein: newMeal.protein,
+        carbs: newMeal.carbs,
+        fat: newMeal.fat,
+        water_amount: 0.0
+      });
+      if (response.data && response.data.id) {
+        // Swap temp ID for DB ID
+        setMeals(prev => prev.map(m => m.id === tempId ? { ...m, id: response.data.id } : m));
+      }
+    } catch (err) {
+      console.warn("Could not save custom meal to backend database.");
+    }
   };
 
   // Quick Pre-fill / Log suggestion
   const handleSelectFood = (food: { name: string; calories: number; protein: number; carbs: number; fat: number }) => {
+    setActiveTab("tracker");
     setMealName(food.name);
     setCalories(food.calories);
     setProtein(food.protein);
@@ -152,10 +238,20 @@ export default function NutritionPage() {
     });
   };
 
-  const handleDeleteMeal = (id: string) => {
+  const handleDeleteMeal = async (id: string) => {
     const filtered = meals.filter((meal) => meal.id !== id);
     saveMealsToLocal(filtered);
+
+    // Resilient delete from database
+    if (!id.startsWith("temp-")) {
+      try {
+        await axios.delete(`https://sona-mona-careloop-api.vercel.app/api/nutrition/${id}`);
+      } catch (err) {
+        console.warn("Could not delete custom meal from backend database.");
+      }
+    }
   };
+
 
   // 7-day Diet plan toggles
   const [dietType, setDietType] = useState<"veg" | "non-veg">("veg");
@@ -375,7 +471,7 @@ export default function NutritionPage() {
   ];
 
   // Helper to log all meals for a diet plan day
-  const handleLogDayDiet = () => {
+  const handleLogDayDiet = async () => {
     const currentPlan = dietType === "veg" ? vegDietPlan[activeDay] : nonVegDietPlan[activeDay];
     
     // Log the 3 core meals
@@ -419,7 +515,25 @@ export default function NutritionPage() {
     });
 
     setActiveTab("tracker");
+
+    // Sync all 3 meals to backend database
+    for (const meal of loggedMeals) {
+      try {
+        await axios.post(`https://sona-mona-careloop-api.vercel.app/api/nutrition?user_id=${userId}`, {
+          meal_type: meal.type,
+          food_name: meal.name,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbs: meal.carbs,
+          fat: meal.fat,
+          water_amount: 0.0
+        });
+      } catch (err) {
+        console.warn("Could not save daily diet plan meals to backend database.");
+      }
+    }
   };
+
 
   // Totals calculations
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
@@ -448,9 +562,14 @@ export default function NutritionPage() {
         >
           <ArrowLeft size={16} /> Back to home
         </Link>
-        <div className="flex items-center gap-2">
-          <span className="text-[#FF7597]">❤️</span>
-          <span className="font-outfit font-extrabold text-base sm:text-lg text-white">CareLoop Bloom for Sona</span>
+        <div className="flex items-center gap-4">
+          <Link href="/reels" className="text-xs text-[#A19AA8] hover:text-[#9B86FA] transition-colors font-semibold">
+            Yoga & Reels 🧘‍♀️
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-[#FF7597]">❤️</span>
+            <span className="font-outfit font-extrabold text-base sm:text-lg text-white">CareLoop Bloom for Sona</span>
+          </div>
         </div>
       </div>
 
@@ -467,11 +586,14 @@ export default function NutritionPage() {
 
         <div className="flex gap-2 w-full md:w-auto">
           <button
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={() => {
+              setActiveTab("tracker");
+              setShowAddForm(!showAddForm);
+            }}
             className="flex-1 md:flex-none py-3 px-5 rounded-2xl font-bold text-xs text-white bg-gradient-to-r from-[#FF7597] to-[#9B86FA] hover:opacity-95 active:scale-95 transition-all duration-150 flex items-center justify-center gap-2 shadow-md cute-shadow-pink cursor-pointer"
           >
             <Plus size={16} />
-            {showAddForm ? "Close Form" : "Log a Custom Meal"}
+            {showAddForm && activeTab === "tracker" ? "Close Form" : "Log a Custom Meal"}
           </button>
         </div>
       </div>
