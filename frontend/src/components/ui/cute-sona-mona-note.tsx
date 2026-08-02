@@ -59,7 +59,7 @@ export const CuteSonaMonaNote = () => {
 
           <p className="text-base md:text-lg text-[#F3F1F6]/90 font-inter leading-relaxed max-w-2xl mb-8 font-medium">
             You are beautiful the way you are, due to this PCOD sometimes you might get facial hair, exceed the weight, pimples acne etc. <br />
-            but listen you are always loved and you are beautiful with all of these above so be yourself.
+            but listen you are always loved and you are beautiful with all of these above so be yourself. YOU WILL ALWAYS BE LOVED ❤️✨
           </p>
 
           <div className="w-full max-w-md h-[1px] bg-gradient-to-r from-transparent via-[#FF7597]/30 to-transparent my-2" />
