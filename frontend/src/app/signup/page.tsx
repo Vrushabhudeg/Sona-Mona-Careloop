@@ -325,7 +325,7 @@ export default function SignupPage() {
                         S
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold text-white text-xs font-outfit">Sona Andrews</h4>
+                        <h4 className="font-bold text-white text-xs font-outfit">Sona</h4>
                         <p className="text-[10px] text-[#A19AA8] font-inter mt-0.5">sona@careloop.app</p>
                       </div>
                       {mockLoadingUser === "sona@careloop.app" && (
@@ -386,7 +386,7 @@ export default function SignupPage() {
                         
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold text-white text-xs font-outfit">Use Apple ID: Sona Andrews</h4>
+                        <h4 className="font-bold text-white text-xs font-outfit">Use Apple ID: Sona</h4>
                         <p className="text-[10px] text-[#A19AA8] font-inter mt-0.5">sona@careloop.app</p>
                       </div>
                       {mockLoadingUser === "sona@careloop.app" && (
