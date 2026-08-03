@@ -10,7 +10,7 @@ import { useAuth } from "@/context/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signInUser } = useAuth();
+  const { signInUser, signInWithOAuth } = useAuth();
   
   const [isPhone, setIsPhone] = useState(false);
   const [identifier, setIdentifier] = useState("");
@@ -45,6 +45,28 @@ export default function LoginPage() {
     } catch (err) {
       setErrorMsg("Invalid credentials or authentication error.");
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOAuthLogin = async (provider: "google" | "apple") => {
+    setLoading(true);
+    setErrorMsg("");
+    setSuccessMsg(`Redirecting to ${provider === "google" ? "Google" : "Apple"} Authentication... 🌸`);
+
+    try {
+      const res = await signInWithOAuth(provider);
+      if (res.success) {
+        setSuccessMsg(res.message + " Redirecting... ❤️");
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1500);
+      } else {
+        setErrorMsg(res.message);
+        setLoading(false);
+      }
+    } catch (err) {
+      setErrorMsg(`Authentication error during ${provider} sign-in.`);
       setLoading(false);
     }
   };
@@ -176,14 +198,18 @@ export default function LoginPage() {
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
-                onClick={() => setSuccessMsg("Redirecting to Google Authentication... 🌸")}
-                className="py-2.5 border border-white/10 rounded-xl text-xs text-white bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                type="button"
+                disabled={loading}
+                onClick={() => handleOAuthLogin("google")}
+                className="py-2.5 border border-white/10 rounded-xl text-xs text-white bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-medium disabled:opacity-50"
               >
                 <span>Google</span>
               </button>
               <button
-                onClick={() => setSuccessMsg("Redirecting to Apple Authentication... 🌙")}
-                className="py-2.5 border border-white/10 rounded-xl text-xs text-white bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                type="button"
+                disabled={loading}
+                onClick={() => handleOAuthLogin("apple")}
+                className="py-2.5 border border-white/10 rounded-xl text-xs text-white bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-medium disabled:opacity-50"
               >
                 <span>Apple</span>
               </button>

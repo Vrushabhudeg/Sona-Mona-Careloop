@@ -10,7 +10,7 @@ import { useAuth } from "@/context/auth-context";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signUpUser } = useAuth();
+  const { signUpUser, signInWithOAuth } = useAuth();
   
   const [name, setName] = useState("");
   const [isPhone, setIsPhone] = useState(false); // Toggle between Email and Phone
@@ -52,6 +52,28 @@ export default function SignupPage() {
     } catch (err) {
       setErrorMsg("Something went wrong during sign up.");
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOAuthLogin = async (provider: "google" | "apple") => {
+    setLoading(true);
+    setErrorMsg("");
+    setSuccessMsg(`Signing up with ${provider === "google" ? "Google... 🌸" : "Apple... 🌙"}`);
+
+    try {
+      const res = await signInWithOAuth(provider);
+      if (res.success) {
+        setSuccessMsg(res.message + " Redirecting... ❤️");
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1500);
+      } else {
+        setErrorMsg(res.message);
+        setLoading(false);
+      }
+    } catch (err) {
+      setErrorMsg(`Authentication error during ${provider} registration.`);
       setLoading(false);
     }
   };
@@ -199,14 +221,18 @@ export default function SignupPage() {
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
-                onClick={() => setSuccessMsg("Signing up with Google... 🌸")}
-                className="py-2.5 border border-white/10 rounded-xl text-xs text-white bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                type="button"
+                disabled={loading}
+                onClick={() => handleOAuthLogin("google")}
+                className="py-2.5 border border-white/10 rounded-xl text-xs text-white bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-medium disabled:opacity-50"
               >
                 <span>Google</span>
               </button>
               <button
-                onClick={() => setSuccessMsg("Signing up with Apple... 🌙")}
-                className="py-2.5 border border-white/10 rounded-xl text-xs text-white bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                type="button"
+                disabled={loading}
+                onClick={() => handleOAuthLogin("apple")}
+                className="py-2.5 border border-white/10 rounded-xl text-xs text-white bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-medium disabled:opacity-50"
               >
                 <span>Apple</span>
               </button>

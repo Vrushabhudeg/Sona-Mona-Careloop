@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
+import { ReminderProvider } from "@/context/reminder-context";
 import { PWARegister } from "@/components/pwa-register";
 
 const outfit = Outfit({
@@ -38,8 +39,10 @@ export default function RootLayout({
         {/* Main layout container */}
         <div className="relative z-10 min-h-screen flex flex-col justify-between">
           <AuthProvider>
-            <PWARegister />
-            {children}
+            <ReminderProvider>
+              <PWARegister />
+              {children}
+            </ReminderProvider>
           </AuthProvider>
         </div>
       </body>

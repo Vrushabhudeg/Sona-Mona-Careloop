@@ -11,6 +11,7 @@ interface AuthContextType {
   isMockUser: boolean;
   signUpUser: (name: string, identifier: string, isPhone: boolean, pass: string) => Promise<{ success: boolean; message: string }>;
   signInUser: (identifier: string, isPhone: boolean, pass: string) => Promise<{ success: boolean; message: string }>;
+  signInWithOAuth: (provider: "google" | "apple") => Promise<{ success: boolean; message: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   isMockUser: false,
   signUpUser: async () => ({ success: false, message: "" }),
   signInUser: async () => ({ success: false, message: "" }),
+  signInWithOAuth: async () => ({ success: false, message: "" }),
   signOut: async () => { },
 });
 
@@ -234,8 +236,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
+  const signInWithOAuth = async (provider: "google" | "apple") => {
+    if (!isMockUser) {
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: provider,
+          options: {
+            redirectTo: `${window.location.origin}/dashboard`
+          }
+        });
+        if (error) throw error;
+        return { success: true, message: `Redirecting to ${provider}...` };
+      } catch (err: any) {
+        return { success: false, message: err.message || `${provider} authentication failed.` };
+      }
+    } else {
+      // Mock Encrypted localStorage oauth sign-in
+      try {
+        const name = provider === "google" ? "Google User" : "Apple User";
+        const identifier = provider === "google" ? "google.user@careloop.app" : "apple.user@careloop.app";
+        
+        const userSession = {
+          id: provider === "google" ? "google-mock-id" : "apple-mock-id",
+          email: identifier,
+          user_metadata: {
+            full_name: name,
+            avatar_url: "",
+          },
+          app_metadata: {},
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+        } as User;
+
+        setUser(userSession);
+        localStorage.setItem("careloop_active_user", JSON.stringify(userSession));
+        return { success: true, message: `Successfully authenticated with ${provider === "google" ? "Google" : "Apple"}!` };
+      } catch (e) {
+        return { success: false, message: `Mock ${provider} authentication failed.` };
+      }
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, isMockUser, signUpUser, signInUser, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, isMockUser, signUpUser, signInUser, signOut, signInWithOAuth }}>
       {children}
     </AuthContext.Provider>
   );

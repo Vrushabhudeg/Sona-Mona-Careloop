@@ -6,33 +6,25 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Sparkles, Plus, Flame, Clock, LogOut, Award } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { useReminders, Reminder, ActivityLog } from "@/context/reminder-context";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CuteReminder } from "@/components/ui/cute-reminder";
 import { ReminderModal } from "@/components/ui/reminder-modal";
 import { CuteSonaMonaNote } from "@/components/ui/cute-sona-mona-note";
-import axios from "axios";
 import confetti from "canvas-confetti";
-
-interface Reminder {
-  id: string;
-  title: string;
-  message: string;
-  schedule_time: string;
-  emoji?: string;
-  is_active: boolean;
-  days?: string;
-}
-
-interface ActivityLog {
-  id: string;
-  title: string;
-  action: string;
-  time: string;
-}
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, signOut, loading } = useAuth();
+
+  const {
+    reminders,
+    logs,
+    loadingReminders,
+    handleAddReminder,
+    handleReminderComplete,
+  } = useReminders();
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -40,70 +32,21 @@ export default function DashboardPage() {
     }
   }, [user, loading, router]);
 
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const completedCount = logs.filter((l) => l.action === "Completed").length;
+  const progressPercent = Math.min(
+    Math.round((completedCount / (reminders.length || 4)) * 100),
+    100
+  );
 
-  const userId = user?.id || "d3b07384-d113-4ec6-a558-7e3077dd7d7b";
-
-  // Pre-fill mock data for initial load/fallback
-  const defaultReminders: Reminder[] = [
-    { id: "r1", title: "🏃 Night Walk", message: "Time for a gentle walk at night to clear your mind. 🌙", schedule_time: "10:00 PM", emoji: "🏃", is_active: true, days: "Daily" },
-    { id: "r2", title: "🛌 Time to Sleep", message: "Time to sleep! Sleep tight, Sona. 😴", schedule_time: "12:00 AM", emoji: "🛌", is_active: true, days: "Daily" },
-    { id: "r3", title: "🏢 WFO Meal & Hydration", message: "Don't skip meals in between meetings. Stay hydrated, and come home waiting... ❤️", schedule_time: "02:30 PM", emoji: "🏢", is_active: true, days: "Wed, Fri" },
-  ];
-
-  // Fetch reminders
-  const fetchReminders = async () => {
-    try {
-      const response = await axios.get(`https://sona-mona-careloop-api.vercel.app/api/reminders?user_id=${userId}`);
-      if (response.data && response.data.length > 0) {
-        const mapped = response.data.map((r: any) => ({
-          id: r.id,
-          title: r.title,
-          message: r.message,
-          schedule_time: r.schedule_time,
-          emoji: r.title.toLowerCase().includes("walk") ? "🏃" : r.title.toLowerCase().includes("sleep") ? "🛌" : "🏢",
-          is_active: r.is_active,
-          days: r.title.toLowerCase().includes("wfo") || r.title.toLowerCase().includes("office") ? "Wed, Fri" : "Daily",
-        }));
-        setReminders(mapped);
-      } else {
-        setReminders(defaultReminders);
-      }
-    } catch (err) {
-      console.warn("Backend API not reachable. Using fallback mock reminders.");
-      setReminders(defaultReminders);
-    }
+  const handleCreateReminder = async (newR: { title: string; message: string; schedule_time: string }) => {
+    await handleAddReminder(newR);
+    setShowAddModal(false);
   };
 
+  // Big confetti if hitting 100% completion
   useEffect(() => {
-    fetchReminders();
-    
-    // Set default recent logs
-    setLogs([
-      { id: "l1", title: "🏃 Night Walk", action: "Completed", time: "10:14 PM" },
-      { id: "l2", title: "🏢 WFO Meal & Hydration", action: "Completed", time: "02:42 PM" },
-    ]);
-  }, [userId]);
-
-  // Log completion to DB
-  const handleReminderComplete = async (reminder: Reminder) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const nextLogs = [
-      { id: Date.now().toString(), title: reminder.title, action: "Completed", time: timeStr },
-      ...logs,
-    ];
-    setLogs(nextLogs);
-
-    // Calculate progress with the new log count
-    const nextCompletedCount = nextLogs.filter(l => l.action === "Completed").length;
-    const totalCount = reminders.length || 4;
-    
-    // Big confetti if hitting 100% completion
-    if (nextCompletedCount >= totalCount) {
-      setTimeout(() => {
+    if (completedCount > 0 && completedCount === reminders.length) {
+      const timer = setTimeout(() => {
         confetti({
           particleCount: 150,
           spread: 85,
@@ -111,53 +54,9 @@ export default function DashboardPage() {
           colors: ["#FF7597", "#9B86FA", "#67E8A5", "#FFD075"],
         });
       }, 300);
+      return () => clearTimeout(timer);
     }
-
-    try {
-      await axios.post("https://sona-mona-careloop-api.vercel.app/api/reminders/history", {
-        reminder_id: reminder.id,
-        user_id: userId,
-        status: "completed",
-        action_time: new Date().toISOString()
-      });
-    } catch (err) {
-      console.warn("Could not log completion to backend DB.");
-    }
-  };
-
-  // Add reminder helper
-  const handleAddReminder = async (newR: { title: string; message: string; schedule_time: string }) => {
-    const fresh: Reminder = {
-      id: Date.now().toString(),
-      title: newR.title,
-      message: newR.message,
-      schedule_time: newR.schedule_time,
-      emoji: "🌸",
-      is_active: true,
-    };
-
-    setReminders((prev) => [fresh, ...prev]);
-    setShowAddModal(false);
-
-    try {
-      await axios.post(`https://sona-mona-careloop-api.vercel.app/api/reminders?user_id=${userId}`, {
-        title: newR.title,
-        message: newR.message,
-        schedule_time: newR.schedule_time,
-        is_active: true,
-      });
-      confetti({
-        particleCount: 50,
-        spread: 40,
-        colors: ["#9B86FA", "#FF7597"],
-      });
-    } catch (err) {
-      console.warn("Could not save new reminder to FastAPI database.");
-    }
-  };
-
-  const completedCount = logs.filter(l => l.action === "Completed").length;
-  const progressPercent = Math.min(Math.round((completedCount / (reminders.length || 4)) * 100), 100);
+  }, [completedCount, reminders.length]);
 
   // Dynamic Achievements list
   const achievementsList = [
@@ -229,17 +128,27 @@ export default function DashboardPage() {
         <div className="md:col-span-2 flex flex-col gap-4">
           <h3 className="font-bold font-outfit text-lg text-white px-1">Active Nudges</h3>
           <div className="flex flex-col gap-4">
-            {reminders.map((reminder) => (
-              <CuteReminder
-                key={reminder.id}
-                title={reminder.title}
-                message={reminder.message}
-                emoji={reminder.emoji || "🌸"}
-                time={reminder.schedule_time}
-                days={reminder.days}
-                onComplete={() => handleReminderComplete(reminder)}
-              />
-            ))}
+            {loadingReminders ? (
+              <div className="text-center py-8 text-xs text-[#A19AA8] animate-pulse">
+                Loading active nudges... 🌸
+              </div>
+            ) : reminders.length === 0 ? (
+              <div className="text-center py-10 border border-white/5 bg-white/3 rounded-2xl text-xs text-[#A19AA8]">
+                No nudges set up yet. Create one above! ❤️
+              </div>
+            ) : (
+              reminders.map((reminder) => (
+                <CuteReminder
+                  key={reminder.id}
+                  title={reminder.title}
+                  message={reminder.message}
+                  emoji={reminder.emoji || "🌸"}
+                  time={reminder.schedule_time}
+                  days={reminder.days}
+                  onComplete={() => handleReminderComplete(reminder)}
+                />
+              ))
+            )}
           </div>
         </div>
 
@@ -339,7 +248,7 @@ export default function DashboardPage() {
       <ReminderModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSubmit={handleAddReminder}
+        onSubmit={handleCreateReminder}
       />
 
     </div>
