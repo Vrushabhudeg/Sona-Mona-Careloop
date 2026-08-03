@@ -132,3 +132,21 @@ class NutritionLog(Base):
             name="valid_meal_type"
         ),
     )
+
+class Reel(Base):
+    __tablename__ = "reels"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    url = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    shortcode = Column(String, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )

@@ -23,8 +23,11 @@ export default function DashboardPage() {
     loadingReminders,
     handleAddReminder,
     handleReminderComplete,
+    handleDeleteReminder,
   } = useReminders();
   const [showAddModal, setShowAddModal] = useState(false);
+
+  const isPartner = user?.user_metadata?.role === "partner" || user?.email === "vrushabh@careloop.app";
 
   useEffect(() => {
     if (!loading && !user) {
@@ -100,15 +103,18 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h1 className="text-3xl font-extrabold font-outfit text-white flex items-center gap-2">
-            Good Evening, {user?.user_metadata?.full_name || "Sona"} ❤️
+            Good Evening, {isPartner ? "Vrushabh" : (user?.user_metadata?.full_name || "Sona")} ❤️
           </h1>
           <div className="flex flex-wrap gap-2 items-center">
             <div className="flex items-center gap-1 bg-[#FF7597]/15 px-3 py-1 rounded-full text-[#FF7597] text-xs font-bold border border-[#FF7597]/10 mt-1 select-none">
               <Flame size={12} className="fill-current animate-pulse" />
-              <span>5 Day Streak! 🔥</span>
+              <span>{isPartner ? "Monitoring Sona's Flow" : "5 Day Streak! 🔥"}</span>
             </div>
             <p className="text-sm text-[#A19AA8] font-inter mt-1.5">
-              "Your wellness is a quiet flower. Let it bloom at its own sweet pace today."
+              {isPartner 
+                ? "You have full caregiver control. Add, edit, or delete reminders and review her wellness progress."
+                : "\"Your wellness is a quiet flower. Let it bloom at its own sweet pace today.\""
+              }
             </p>
           </div>
         </div>
@@ -117,7 +123,7 @@ export default function DashboardPage() {
           onClick={() => setShowAddModal(true)}
           className="py-3 px-6 rounded-2xl font-bold text-xs text-white bg-gradient-to-r from-[#FF7597] to-[#9B86FA] hover:opacity-95 active:scale-95 transition-all duration-150 flex items-center gap-1.5 shadow-md cute-shadow-pink cursor-pointer"
         >
-          <Plus size={16} /> Create Reminder
+          <Plus size={16} /> Create Nudge
         </button>
       </div>
 
@@ -126,7 +132,14 @@ export default function DashboardPage() {
         
         {/* Core Task List */}
         <div className="md:col-span-2 flex flex-col gap-4">
-          <h3 className="font-bold font-outfit text-lg text-white px-1">Active Nudges</h3>
+          <h3 className="font-bold font-outfit text-lg text-white px-1 flex items-center justify-between">
+            <span>{isPartner ? "Sona's Active Nudges 🌸" : "Active Nudges"}</span>
+            {isPartner && (
+              <span className="text-[10px] text-[#9B86FA] bg-[#9B86FA]/10 border border-[#9B86FA]/20 px-2 py-0.5 rounded-full select-none font-bold uppercase">
+                Caregiver Mode
+              </span>
+            )}
+          </h3>
           <div className="flex flex-col gap-4">
             {loadingReminders ? (
               <div className="text-center py-8 text-xs text-[#A19AA8] animate-pulse">
@@ -146,6 +159,7 @@ export default function DashboardPage() {
                   time={reminder.schedule_time}
                   days={reminder.days}
                   onComplete={() => handleReminderComplete(reminder)}
+                  onDelete={() => handleDeleteReminder(reminder.id)}
                 />
               ))
             )}
@@ -157,7 +171,9 @@ export default function DashboardPage() {
           
           {/* Progress Circular Panel */}
           <GlassCard glowColor="pink" className="flex flex-col items-center gap-4 text-center">
-            <h3 className="font-bold font-outfit text-md text-white">Today's Progress</h3>
+            <h3 className="font-bold font-outfit text-md text-white">
+              {isPartner ? "Sona's Progress Today" : "Today's Progress"}
+            </h3>
             
             <div className="relative w-32 h-32 flex items-center justify-center my-1">
               <svg className="w-full h-full transform -rotate-90">
@@ -183,14 +199,17 @@ export default function DashboardPage() {
             </div>
             
             <p className="text-xs text-[#A19AA8] font-inter leading-relaxed">
-              You completed <span className="text-[#FF7597] font-bold">{completedCount}</span> reminders today. Stay gentle with yourself!
+              {isPartner
+                ? `Sona completed ${completedCount} reminders today. Keeping her safe & healthy! ❤️`
+                : `You completed ${completedCount} reminders today. Stay gentle with yourself!`
+              }
             </p>
           </GlassCard>
 
           {/* Achievements Card */}
           <GlassCard glowColor="purple" className="flex flex-col gap-4">
             <h3 className="font-bold font-outfit text-md text-white flex items-center gap-1.5">
-              Achievements 🏆
+              {isPartner ? "Sona's Achievements 🏆" : "Achievements 🏆"}
             </h3>
             <div className="flex flex-col gap-3">
               {achievementsList.map((ach) => (
@@ -220,7 +239,9 @@ export default function DashboardPage() {
 
           {/* Activity Feed */}
           <GlassCard glowColor="none" className="flex flex-col gap-4">
-            <h3 className="font-bold font-outfit text-md text-white">Recent Activity</h3>
+            <h3 className="font-bold font-outfit text-md text-white">
+              {isPartner ? "Sona's Recent Activity" : "Recent Activity"}
+            </h3>
             
             <div className="flex flex-col gap-3.5 max-h-[200px] overflow-y-auto pr-1">
               {logs.map((log) => (

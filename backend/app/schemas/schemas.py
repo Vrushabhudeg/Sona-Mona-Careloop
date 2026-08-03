@@ -83,3 +83,21 @@ class NutritionLogResponse(NutritionLogBase):
 
     class Config:
         from_attributes = True
+
+# Reel Schemas
+class ReelBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    url: str
+    category: str
+    shortcode: str
+
+class ReelCreate(ReelBase):
+    pass
+
+class ReelResponse(ReelBase):
+    id: UUID
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -31,6 +31,7 @@ interface ReminderContextType {
   fetchReminders: () => Promise<void>;
   handleAddReminder: (newR: { title: string; message: string; schedule_time: string }) => Promise<void>;
   handleReminderComplete: (reminder: Reminder) => Promise<void>;
+  handleDeleteReminder: (reminderId: string) => Promise<void>;
   snoozeReminder: (reminder: Reminder) => void;
   activeNudge: Reminder | null;
   setActiveNudge: (nudge: Reminder | null) => void;
@@ -43,6 +44,7 @@ const ReminderContext = createContext<ReminderContextType>({
   fetchReminders: async () => {},
   handleAddReminder: async () => {},
   handleReminderComplete: async () => {},
+  handleDeleteReminder: async () => {},
   snoozeReminder: () => {},
   activeNudge: null,
   setActiveNudge: () => {},
@@ -117,7 +119,8 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [activeNudge, setActiveNudge] = useState<Reminder | null>(null);
   const [notifiedToday, setNotifiedToday] = useState<Record<string, string>>({});
 
-  const userId = user?.id || "d3b07384-d113-4ec6-a558-7e3077dd7d7b";
+  const isPartner = user?.user_metadata?.role === "partner" || user?.email === "vrushabh@careloop.app";
+  const userId = isPartner ? "d3b07384-d113-4ec6-a558-7e3077dd7d7b" : (user?.id || "d3b07384-d113-4ec6-a558-7e3077dd7d7b");
 
   const defaultReminders: Reminder[] = [
     { id: "r1", title: "🏃 Night Walk", message: "Time for a gentle walk at night to clear your mind. 🌙", schedule_time: "10:00 PM", emoji: "🏃", is_active: true, days: "Daily" },
@@ -208,7 +211,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Scheduler Background Loop
   useEffect(() => {
-    if (!user || reminders.length === 0) return;
+    if (!user || reminders.length === 0 || isPartner) return;
 
     const interval = setInterval(() => {
       const now = new Date();
@@ -308,6 +311,15 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const handleDeleteReminder = async (reminderId: string) => {
+    setReminders((prev) => prev.filter((r) => r.id !== reminderId));
+    try {
+      await axios.delete(`https://sona-mona-careloop-api.vercel.app/api/reminders/${reminderId}`);
+    } catch (e) {
+      console.warn("Could not delete reminder from backend database.");
+    }
+  };
+
   const snoozeReminder = (reminder: Reminder) => {
     // Dismiss active nudge and schedule a re-alert in 10 seconds for user demonstration
     setActiveNudge(null);
@@ -326,6 +338,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         fetchReminders,
         handleAddReminder,
         handleReminderComplete,
+        handleDeleteReminder,
         snoozeReminder,
         activeNudge,
         setActiveNudge,

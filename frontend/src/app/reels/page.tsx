@@ -11,6 +11,7 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { GlassCard } from "@/components/ui/glass-card";
 import confetti from "canvas-confetti";
+import axios from "axios";
 
 interface Reel {
   id: string;
@@ -94,22 +95,44 @@ export default function ReelsPage() {
   const [newCategory, setNewCategory] = useState<"yoga" | "diet" | "habits">("yoga");
   const [formError, setFormError] = useState("");
 
-  // Load state from localStorage on mount
+  // Load custom reels from backend and standard states on mount
   useEffect(() => {
-    // 1. Load Reels (seeds + custom)
-    const storedCustom = localStorage.getItem("careloop_custom_reels");
-    if (storedCustom) {
+    // 1. Fetch custom reels from database
+    const fetchCustomReels = async () => {
       try {
-        const customList = JSON.parse(storedCustom) as Reel[];
-        // Filter customList to make sure no duplicates
-        const merged = [...defaultReels, ...customList.map(r => ({ ...r, isCustom: true }))];
-        setReels(merged);
-      } catch (e) {
-        setReels(defaultReels);
+        const response = await axios.get("https://sona-mona-careloop-api.vercel.app/api/reels");
+        if (response.data && response.data.length > 0) {
+          const customList = response.data.map((r: any) => ({
+            id: r.id,
+            title: r.title,
+            description: r.description || "Added practice guide.",
+            url: r.url,
+            category: r.category as any,
+            shortcode: r.shortcode,
+            isCustom: true
+          }));
+          setReels([...defaultReels, ...customList]);
+        } else {
+          setReels(defaultReels);
+        }
+      } catch (err) {
+        console.warn("Backend API not reachable for custom reels. Falling back to default reels.");
+        // Try localStorage as offline fallback
+        const storedCustom = localStorage.getItem("careloop_custom_reels");
+        if (storedCustom) {
+          try {
+            const customList = JSON.parse(storedCustom) as Reel[];
+            setReels([...defaultReels, ...customList.map(r => ({ ...r, isCustom: true }))]);
+          } catch (e) {
+            setReels(defaultReels);
+          }
+        } else {
+          setReels(defaultReels);
+        }
       }
-    } else {
-      setReels(defaultReels);
-    }
+    };
+
+    fetchCustomReels();
 
     // 2. Load Favorites
     const storedFavs = localStorage.getItem("careloop_favorite_reels");
@@ -182,7 +205,7 @@ export default function ReelsPage() {
   };
 
   // Add Reel
-  const handleAddReel = (e: React.FormEvent) => {
+  const handleAddReel = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
 
@@ -197,29 +220,47 @@ export default function ReelsPage() {
       return;
     }
 
-    const newReelItem: Reel = {
-      id: "custom-" + Date.now(),
+    const newReelItem = {
       title: newTitle.trim(),
-      description: newDesc.trim() || "User added practice guide.",
+      description: newDesc.trim() || "Added practice guide.",
       url: newUrl.trim().startsWith("http") ? newUrl.trim() : `https://www.instagram.com/reel/${shortcode}/`,
       category: newCategory,
       shortcode,
-      isCustom: true
     };
 
-    // Save custom reels
-    const storedCustom = localStorage.getItem("careloop_custom_reels");
-    let customList: Reel[] = [];
-    if (storedCustom) {
-      try {
-        customList = JSON.parse(storedCustom);
-      } catch (e) {}
-    }
-    customList.push(newReelItem);
-    localStorage.setItem("careloop_custom_reels", JSON.stringify(customList));
+    // Save custom reels to database
+    try {
+      const response = await axios.post("https://sona-mona-careloop-api.vercel.app/api/reels", newReelItem);
+      if (response.data) {
+        const addedReel: Reel = {
+          id: response.data.id,
+          title: response.data.title,
+          description: response.data.description || "Added practice guide.",
+          url: response.data.url,
+          category: response.data.category as any,
+          shortcode: response.data.shortcode,
+          isCustom: true
+        };
+        setReels([...reels, addedReel]);
+      }
+    } catch (err) {
+      console.warn("Could not save new custom reel to database. Fallback to localStorage.");
+      
+      const offlineReel: Reel = {
+        id: "custom-" + Date.now(),
+        ...newReelItem,
+        isCustom: true
+      };
 
-    // Update screen state
-    setReels([...reels, newReelItem]);
+      const storedCustom = localStorage.getItem("careloop_custom_reels") || "[]";
+      try {
+        const customList = JSON.parse(storedCustom);
+        customList.push(offlineReel);
+        localStorage.setItem("careloop_custom_reels", JSON.stringify(customList));
+      } catch (ex) {}
+
+      setReels([...reels, offlineReel]);
+    }
 
     // Reset Form & Close
     setNewTitle("");
@@ -237,7 +278,7 @@ export default function ReelsPage() {
   };
 
   // Delete Custom Reel
-  const handleDeleteReel = (id: string) => {
+  const handleDeleteReel = async (id: string) => {
     // 1. Remove from screen state
     setReels(reels.filter(r => r.id !== id));
 
@@ -249,6 +290,13 @@ export default function ReelsPage() {
         const filtered = customList.filter(r => r.id !== id && r.id !== ("custom-" + id));
         localStorage.setItem("careloop_custom_reels", JSON.stringify(filtered));
       } catch (e) {}
+    }
+
+    // 3. Remove from database
+    try {
+      await axios.delete(`https://sona-mona-careloop-api.vercel.app/api/reels/${id}`);
+    } catch (e) {
+      console.warn("Could not delete custom reel from database");
     }
   };
 

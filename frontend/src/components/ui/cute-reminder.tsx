@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Check, BellRing } from "lucide-react";
+import { Sparkles, Check, BellRing, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
@@ -14,6 +14,7 @@ interface CuteReminderProps {
   days?: string;
   onComplete?: () => void;
   onSnooze?: () => void;
+  onDelete?: () => void;
 }
 
 export const CuteReminder: React.FC<CuteReminderProps> = ({
@@ -24,6 +25,7 @@ export const CuteReminder: React.FC<CuteReminderProps> = ({
   days,
   onComplete,
   onSnooze,
+  onDelete,
 }) => {
   const [status, setStatus] = useState<"pending" | "completed" | "snoozed">("pending");
 
@@ -92,6 +94,18 @@ export const CuteReminder: React.FC<CuteReminderProps> = ({
                 <span className="text-xs text-[#A19AA8] bg-white/5 px-2 py-1 rounded-md">
                   {time}
                 </span>
+                {onDelete && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                    className="p-1 rounded-lg bg-white/5 border border-white/5 hover:border-red-500/30 text-[#A19AA8] hover:text-[#FF7597] transition-all cursor-pointer flex items-center justify-center shrink-0 ml-1"
+                    title="Delete Nudge"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </div>
             </div>
             <p className="text-sm text-[#A19AA8] mt-1 leading-relaxed">{message}</p>

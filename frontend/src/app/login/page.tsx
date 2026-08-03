@@ -3,14 +3,14 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Sparkles, X } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { useAuth } from "@/context/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signInUser, signInWithOAuth } = useAuth();
+  const { signInUser, signInWithOAuth, isMockUser } = useAuth();
   
   const [isPhone, setIsPhone] = useState(false);
   const [identifier, setIdentifier] = useState("");
@@ -18,6 +18,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [showMockOAuthModal, setShowMockOAuthModal] = useState<"google" | "apple" | null>(null);
+  const [mockLoadingUser, setMockLoadingUser] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,24 +52,55 @@ export default function LoginPage() {
   };
 
   const handleOAuthLogin = async (provider: "google" | "apple") => {
-    setLoading(true);
-    setErrorMsg("");
-    setSuccessMsg(`Redirecting to ${provider === "google" ? "Google" : "Apple"} Authentication... 🌸`);
+    if (isMockUser) {
+      setShowMockOAuthModal(provider);
+    } else {
+      setLoading(true);
+      setErrorMsg("");
+      setSuccessMsg(`Redirecting to ${provider === "google" ? "Google" : "Apple"} Authentication... 🌸`);
 
-    try {
-      const res = await signInWithOAuth(provider);
-      if (res.success) {
-        setSuccessMsg(res.message + " Redirecting... ❤️");
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 1500);
-      } else {
-        setErrorMsg(res.message);
+      try {
+        const res = await signInWithOAuth(provider);
+        if (res.success) {
+          setSuccessMsg(res.message + " Redirecting... ❤️");
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 1500);
+        } else {
+          setErrorMsg(res.message);
+          setLoading(false);
+        }
+      } catch (err) {
+        setErrorMsg(`Authentication error during ${provider} sign-in.`);
         setLoading(false);
       }
+    }
+  };
+
+  const handleSelectMockAccount = async (email: string) => {
+    const provider = showMockOAuthModal;
+    if (!provider) return;
+
+    setMockLoadingUser(email);
+    setErrorMsg("");
+    setSuccessMsg(`Authenticating with ${provider === "google" ? "Google" : "Apple"} as ${email === "vrushabh@careloop.app" ? "Vrushabh" : "Sona"}... 🌸`);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const res = await signInWithOAuth(provider, email);
+      if (res.success) {
+        setSuccessMsg(res.message + " Redirecting... ❤️");
+        setShowMockOAuthModal(null);
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1200);
+      } else {
+        setErrorMsg(res.message);
+      }
     } catch (err) {
-      setErrorMsg(`Authentication error during ${provider} sign-in.`);
-      setLoading(false);
+      setErrorMsg("Simulation authentication error.");
+    } finally {
+      setMockLoadingUser(null);
     }
   };
 
@@ -224,6 +257,144 @@ export default function LoginPage() {
           </div>
         </GlassCard>
       </div>
+
+      {/* Mock OAuth Modal Chooser */}
+      <AnimatePresence mode="wait">
+        {showMockOAuthModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-sm glass rounded-3xl border border-white/10 p-6 z-10 shadow-2xl relative bg-[#14121F]"
+            >
+              {showMockOAuthModal === "google" ? (
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center font-bold text-xs text-black">
+                        G
+                      </div>
+                      <h3 className="text-md font-bold font-outfit text-white">
+                        Sign in with Google
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setShowMockOAuthModal(null)}
+                      className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  
+                  <p className="text-xs text-[#A19AA8] font-inter mb-4">
+                    Choose a Google account to continue to CareLoop:
+                  </p>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMockAccount("sona@careloop.app")}
+                      disabled={mockLoadingUser !== null}
+                      className="w-full text-left p-3.5 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 flex items-center gap-3 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF7597] to-[#9B86FA] flex items-center justify-center text-white text-xs font-bold">
+                        S
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-white text-xs font-outfit">Sona Andrews</h4>
+                        <p className="text-[10px] text-[#A19AA8] font-inter mt-0.5">sona@careloop.app</p>
+                      </div>
+                      {mockLoadingUser === "sona@careloop.app" && (
+                        <div className="w-3.5 h-3.5 border-2 border-[#FF7597] border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMockAccount("vrushabh@careloop.app")}
+                      disabled={mockLoadingUser !== null}
+                      className="w-full text-left p-3.5 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 flex items-center gap-3 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#9B86FA] to-[#67E8A5] flex items-center justify-center text-white text-xs font-bold">
+                        V
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-white text-xs font-outfit">Vrushabh</h4>
+                        <p className="text-[10px] text-[#A19AA8] font-inter mt-0.5">vrushabh@careloop.app (Caregiver)</p>
+                      </div>
+                      {mockLoadingUser === "vrushabh@careloop.app" && (
+                        <div className="w-3.5 h-3.5 border-2 border-[#9B86FA] border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs text-black font-bold select-none">
+                        
+                      </div>
+                      <h3 className="text-md font-bold font-outfit text-white">
+                        Sign in with Apple ID
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setShowMockOAuthModal(null)}
+                      className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  
+                  <p className="text-xs text-[#A19AA8] font-inter mb-4">
+                    Do you want to sign in to CareLoop using your Apple ID?
+                  </p>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMockAccount("sona@careloop.app")}
+                      disabled={mockLoadingUser !== null}
+                      className="w-full text-left p-3.5 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 flex items-center gap-3 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-neutral-850 flex items-center justify-center text-white text-xs font-bold">
+                        
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-white text-xs font-outfit">Use Apple ID: Sona Andrews</h4>
+                        <p className="text-[10px] text-[#A19AA8] font-inter mt-0.5">sona@careloop.app</p>
+                      </div>
+                      {mockLoadingUser === "sona@careloop.app" && (
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMockAccount("vrushabh@careloop.app")}
+                      disabled={mockLoadingUser !== null}
+                      className="w-full text-left p-3.5 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 flex items-center gap-3 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-neutral-850 flex items-center justify-center text-white text-xs font-bold">
+                        
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-white text-xs font-outfit">Use Apple ID: Vrushabh</h4>
+                        <p className="text-[10px] text-[#A19AA8] font-inter mt-0.5">vrushabh@careloop.app (Caregiver)</p>
+                      </div>
+                      {mockLoadingUser === "vrushabh@careloop.app" && (
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

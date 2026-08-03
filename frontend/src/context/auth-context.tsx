@@ -11,7 +11,7 @@ interface AuthContextType {
   isMockUser: boolean;
   signUpUser: (name: string, identifier: string, isPhone: boolean, pass: string) => Promise<{ success: boolean; message: string }>;
   signInUser: (identifier: string, isPhone: boolean, pass: string) => Promise<{ success: boolean; message: string }>;
-  signInWithOAuth: (provider: "google" | "apple") => Promise<{ success: boolean; message: string }>;
+  signInWithOAuth: (provider: "google" | "apple", email?: string) => Promise<{ success: boolean; message: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -22,7 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   isMockUser: false,
   signUpUser: async () => ({ success: false, message: "" }),
   signInUser: async () => ({ success: false, message: "" }),
-  signInWithOAuth: async () => ({ success: false, message: "" }),
+  signInWithOAuth: async (provider: "google" | "apple", email?: string) => ({ success: false, message: "" }),
   signOut: async () => { },
 });
 
@@ -181,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const demoUser = {
             id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b",
             email: "sona@careloop.app",
-            user_metadata: { full_name: "Sona" },
+            user_metadata: { full_name: "Sona", role: "user" },
             app_metadata: {},
             aud: "authenticated",
             created_at: new Date().toISOString(),
@@ -189,6 +189,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(demoUser);
           localStorage.setItem("careloop_active_user", JSON.stringify(demoUser));
           return { success: true, message: "Welcome back, Sona!" };
+        }
+
+        if (identifier === "vrushabh@careloop.app" && pass === "vrushabhlove") {
+          const partnerUser = {
+            id: "5f8288b8-0c6e-4e4b-b0b3-f6cd64d5ee2c",
+            email: "vrushabh@careloop.app",
+            user_metadata: { full_name: "Vrushabh", role: "partner" },
+            app_metadata: {},
+            aud: "authenticated",
+            created_at: new Date().toISOString(),
+          } as User;
+          setUser(partnerUser);
+          localStorage.setItem("careloop_active_user", JSON.stringify(partnerUser));
+          return { success: true, message: "Welcome back, Vrushabh!" };
         }
 
         const usersStr = localStorage.getItem("careloop_mock_users") || "[]";
@@ -236,7 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
-  const signInWithOAuth = async (provider: "google" | "apple") => {
+  const signInWithOAuth = async (provider: "google" | "apple", email?: string) => {
     if (!isMockUser) {
       try {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -253,14 +267,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       // Mock Encrypted localStorage oauth sign-in
       try {
-        const name = provider === "google" ? "Google User" : "Apple User";
-        const identifier = provider === "google" ? "google.user@careloop.app" : "apple.user@careloop.app";
+        const isVrushabh = email === "vrushabh@careloop.app";
+        const name = isVrushabh ? "Vrushabh" : (provider === "google" ? "Sona Andrews (Google)" : "Sona Andrews (Apple)");
+        const userEmail = isVrushabh ? "vrushabh@careloop.app" : "sona@careloop.app";
+        const role = isVrushabh ? "partner" : "user";
         
         const userSession = {
-          id: provider === "google" ? "google-mock-id" : "apple-mock-id",
-          email: identifier,
+          id: isVrushabh ? "5f8288b8-0c6e-4e4b-b0b3-f6cd64d5ee2c" : "d3b07384-d113-4ec6-a558-7e3077dd7d7b",
+          email: userEmail,
           user_metadata: {
             full_name: name,
+            role: role,
             avatar_url: "",
           },
           app_metadata: {},

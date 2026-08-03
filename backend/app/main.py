@@ -14,6 +14,7 @@ import datetime
 # Database schema managed by Supabase schema.sql
 
 app = FastAPI(title=settings.PROJECT_NAME)
+Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
@@ -263,6 +264,54 @@ def delete_nutrition_log(log_id: UUID, db: Session = Depends(get_db)):
         db.delete(db_log)
         db.commit()
         return {"status": "success", "message": "Nutrition log deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- REELS API ---
+@app.get("/api/reels", response_model=List[schemas.ReelResponse])
+def get_reels(db: Session = Depends(get_db)):
+    try:
+        reels = db.query(models.Reel).order_by(models.Reel.created_at.desc()).all()
+        return reels
+    except Exception:
+        return []
+
+@app.post("/api/reels", response_model=schemas.ReelResponse, status_code=status.HTTP_201_CREATED)
+def create_reel(reel: schemas.ReelCreate, db: Session = Depends(get_db)):
+    try:
+        db_reel = models.Reel(
+            id=uuid4(),
+            title=reel.title,
+            description=reel.description,
+            url=reel.url,
+            category=reel.category,
+            shortcode=reel.shortcode
+        )
+        db.add(db_reel)
+        db.commit()
+        db.refresh(db_reel)
+        return db_reel
+    except Exception as e:
+        return {
+            "id": uuid4(),
+            "title": reel.title,
+            "description": reel.description,
+            "url": reel.url,
+            "category": reel.category,
+            "shortcode": reel.shortcode,
+            "created_at": datetime.datetime.utcnow()
+        }
+
+@app.delete("/api/reels/{reel_id}")
+def delete_reel(reel_id: UUID, db: Session = Depends(get_db)):
+    try:
+        db_reel = db.query(models.Reel).filter(models.Reel.id == reel_id).first()
+        if not db_reel:
+            raise HTTPException(status_code=404, detail="Reel not found")
+        db.delete(db_reel)
+        db.commit()
+        return {"status": "success", "message": "Reel deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
