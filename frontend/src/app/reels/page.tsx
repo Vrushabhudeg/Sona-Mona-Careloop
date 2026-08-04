@@ -13,6 +13,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import confetti from "canvas-confetti";
 import axios from "axios";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 interface Reel {
   id: string;
   title: string;
@@ -100,7 +102,7 @@ export default function ReelsPage() {
     // 1. Fetch custom reels from database
     const fetchCustomReels = async () => {
       try {
-        const response = await axios.get("https://sona-mona-careloop-api.vercel.app/api/reels");
+        const response = await axios.get(`${API_BASE_URL}/api/reels`);
         if (response.data && response.data.length > 0) {
           const customList = response.data.map((r: any) => ({
             id: r.id,
@@ -230,7 +232,7 @@ export default function ReelsPage() {
 
     // Save custom reels to database
     try {
-      const response = await axios.post("https://sona-mona-careloop-api.vercel.app/api/reels", newReelItem);
+      const response = await axios.post(`${API_BASE_URL}/api/reels`, newReelItem);
       if (response.data) {
         const addedReel: Reel = {
           id: response.data.id,
@@ -294,7 +296,7 @@ export default function ReelsPage() {
 
     // 3. Remove from database
     try {
-      await axios.delete(`https://sona-mona-careloop-api.vercel.app/api/reels/${id}`);
+      await axios.delete(`${API_BASE_URL}/api/reels/${id}`);
     } catch (e) {
       console.warn("Could not delete custom reel from database");
     }

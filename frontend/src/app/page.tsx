@@ -36,7 +36,7 @@ export default function LandingPage() {
               Sign In
             </Link>
             <Link 
-              href="/signup" 
+              href="/login" 
               className="py-1.5 px-3 sm:py-2 sm:px-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#FF7597] to-[#9B86FA] hover:opacity-95 active:scale-95 transition-all duration-150 shadow-md cute-shadow-pink text-[10px] sm:text-xs shrink-0"
             >
               Get Started
@@ -89,7 +89,7 @@ export default function LandingPage() {
             className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center mb-12"
           >
             <Link 
-              href="/signup" 
+              href="/login" 
               className="w-full sm:w-auto py-3.5 px-8 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#FF7597] to-[#9B86FA] hover:opacity-95 active:scale-95 transition-all duration-150 flex items-center justify-center gap-2 shadow-lg cute-shadow-pink"
             >
               Get Started Free

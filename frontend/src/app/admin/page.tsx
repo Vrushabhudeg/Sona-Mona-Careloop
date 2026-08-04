@@ -11,6 +11,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 interface AdminProfile {
   id: string;
   full_name: string;
@@ -91,7 +93,7 @@ export default function AdminDashboardPage() {
   // Fetch admin profiles from backend
   const fetchProfiles = async () => {
     try {
-      const response = await axios.get("https://sona-mona-careloop-api.vercel.app/api/admin/profiles");
+      const response = await axios.get(`${API_BASE_URL}/api/admin/profiles`);
       if (response.data && response.data.length > 0) {
         setUsers(response.data);
       } else {
@@ -106,7 +108,7 @@ export default function AdminDashboardPage() {
   // Fetch reminders across all users from backend
   const fetchReminders = async () => {
     try {
-      const response = await axios.get("https://sona-mona-careloop-api.vercel.app/api/admin/reminders");
+      const response = await axios.get(`${API_BASE_URL}/api/admin/reminders`);
       if (response.data && response.data.length > 0) {
         setReminders(response.data);
       } else {
@@ -135,7 +137,7 @@ export default function AdminDashboardPage() {
 
     // Update backend API
     try {
-      await axios.put(`https://sona-mona-careloop-api.vercel.app/api/reminders/${reminderId}`, {
+      await axios.put(`${API_BASE_URL}/api/reminders/${reminderId}`, {
         schedule_time: newTime,
         message: newMessage
       });
@@ -171,7 +173,7 @@ export default function AdminDashboardPage() {
 
     // Update backend API
     try {
-      await axios.delete(`https://sona-mona-careloop-api.vercel.app/api/reminders/${reminderId}`);
+      await axios.delete(`${API_BASE_URL}/api/reminders/${reminderId}`);
 
       // Add to admin activity log
       const newLog: AdminLog = {

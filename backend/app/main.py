@@ -3,18 +3,139 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.core.config import settings
-from app.core.database import engine, get_db, Base
+from app.core.database import engine, get_db, Base, SessionLocal
 from app.models import models
 from app.schemas import schemas
 from typing import List, Optional
 from uuid import UUID, uuid4
 import datetime
+import json
+import re
+import asyncio
+from pywebpush import webpush, WebPushException
 
-# Automatically compile tables (fallback for local development)
-# Database schema managed by Supabase schema.sql
+# VAPID Keys for Web Push Notifications
+VAPID_PUBLIC_KEY = "BD0vydkCgyWGPEJ_hqZqIdUuAtPSvf7dpQnemf372NYY2GZI0hxyKDqq1kHoj_a6zOUSnQrSd0v229JAbEkV-bY"
+VAPID_PRIVATE_KEY = "d62jotzFIJ73TPzo07W1ZzjIn9ZhF_jI-ctNCLG-kfo"
+VAPID_CLAIMS = {
+    "sub": "mailto:vrushabh@careloop.app"
+}
+
+def send_web_push(subscription_info, data_str):
+    try:
+        webpush(
+            subscription_info=subscription_info,
+            data=data_str,
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims=VAPID_CLAIMS
+        )
+        return True
+    except WebPushException as ex:
+        print(f"WebPushException sending push: {repr(ex)}")
+        return False
+
+def parse_schedule_time_py(time_str: str):
+    try:
+        cleaned = time_str.strip()
+        # Match pattern: optional leading digit, hour:minute, optional space, AM/PM
+        match = re.match(r"^(\d{1,2}):(\d{2})\s*(AM|PM)$", cleaned, re.IGNORECASE)
+        if not match:
+            match_24 = re.match(r"^(\d{1,2}):(\d{2})$", cleaned)
+            if match_24:
+                return int(match_24.group(1)), int(match_24.group(2))
+            return None
+        
+        hours = int(match.group(1))
+        minutes = int(match.group(2))
+        period = match.group(3).upper()
+        
+        if period == "PM" and hours != 12:
+            hours += 12
+        elif period == "AM" and hours == 12:
+            hours = 0
+            
+        return hours, minutes
+    except Exception:
+        return None
+
+def get_current_local_time():
+    now = datetime.datetime.now()
+    import time as pytime
+    # If server is in UTC (like Vercel production), offset to Sona's local time (IST, +5:30)
+    if pytime.tzname[0] in ("UTC", "Coordinated Universal Time", "GMT"):
+        return now + datetime.timedelta(hours=5, minutes=30)
+    return now
+
+def check_active_reminders_and_send(db: Session):
+    now = get_current_local_time()
+    current_hour = now.hour
+    current_minute = now.minute
+    
+    # We load active reminders
+    reminders = db.query(models.Reminder).filter(models.Reminder.is_active == True).all()
+    sent_count = 0
+    
+    for reminder in reminders:
+        parsed = parse_schedule_time_py(reminder.schedule_time)
+        if not parsed:
+            continue
+        
+        rem_hour, rem_minute = parsed
+        if rem_hour == current_hour and rem_minute == current_minute:
+            subs = db.query(models.PushSubscription).filter(
+                models.PushSubscription.user_id == reminder.user_id
+            ).all()
+            
+            if subs:
+                payload = json.dumps({
+                    "title": reminder.title,
+                    "body": reminder.message or "Time for a sweet check-off! ❤️"
+                })
+                for sub in subs:
+                    sub_info = {
+                        "endpoint": sub.endpoint,
+                        "keys": {
+                            "p256dh": sub.p256dh,
+                            "auth": sub.auth
+                        }
+                    }
+                    if send_web_push(sub_info, payload):
+                        sent_count += 1
+                        
+                        # Log sending to history
+                        history_log = models.ReminderHistory(
+                            id=uuid4(),
+                            user_id=reminder.user_id,
+                            reminder_id=reminder.id,
+                            status="sent",
+                            action_time=datetime.datetime.utcnow()
+                        )
+                        db.add(history_log)
+    db.commit()
+    return sent_count
+
+async def check_reminders_loop():
+    # Wait a bit on startup
+    await asyncio.sleep(5)
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                check_active_reminders_and_send(db)
+            finally:
+                db.close()
+        except Exception as e:
+            print("Error in check_reminders_loop background worker:", e)
+        await asyncio.sleep(60)
 
 app = FastAPI(title=settings.PROJECT_NAME)
+
+@app.on_event("startup")
+def start_background_workers():
+    asyncio.create_task(check_reminders_loop())
+
 Base.metadata.create_all(bind=engine)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,6 +159,75 @@ def health_check(db: Session = Depends(get_db)):
             status_code=500,
             detail=f"Database connection error: {str(e)}"
         )
+
+# --- PUSH NOTIFICATIONS ENDPOINTS ---
+@app.post("/api/notifications/subscribe")
+def subscribe(payload: schemas.PushSubscriptionCreate, db: Session = Depends(get_db)):
+    try:
+        # Check if already exists
+        existing = db.query(models.PushSubscription).filter(
+            models.PushSubscription.endpoint == payload.endpoint
+        ).first()
+        if existing:
+            existing.user_id = payload.user_id
+            existing.p256dh = payload.p256dh
+            existing.auth = payload.auth
+            db.commit()
+            db.refresh(existing)
+            return existing
+        
+        db_sub = models.PushSubscription(
+            id=uuid4(),
+            user_id=payload.user_id,
+            endpoint=payload.endpoint,
+            p256dh=payload.p256dh,
+            auth=payload.auth
+        )
+        db.add(db_sub)
+        db.commit()
+        db.refresh(db_sub)
+        return db_sub
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/notifications/send-test")
+def send_test_notification(user_id: UUID, db: Session = Depends(get_db)):
+    try:
+        subs = db.query(models.PushSubscription).filter(
+            models.PushSubscription.user_id == user_id
+        ).all()
+        
+        if not subs:
+            raise HTTPException(status_code=404, detail="No active notifications registration found. Please install the app and enable notifications.")
+        
+        payload = json.dumps({
+            "title": "CareLoop Test Nudge ❤️",
+            "body": "It works! You are officially synced with Vrushabh's care. 🌸"
+        })
+        
+        sent_count = 0
+        for sub in subs:
+            sub_info = {
+                "endpoint": sub.endpoint,
+                "keys": {
+                    "p256dh": sub.p256dh,
+                    "auth": sub.auth
+                }
+            }
+            if send_web_push(sub_info, payload):
+                sent_count += 1
+                
+        return {"status": "success", "message": f"Test nudge sent to {sent_count} device(s)!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/cron/check-reminders")
+def cron_check_reminders(db: Session = Depends(get_db)):
+    try:
+        sent_count = check_active_reminders_and_send(db)
+        return {"status": "success", "sent_count": sent_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- USER PROFILES ENDPOINTS ---
 @app.get("/api/profiles/{user_id}", response_model=schemas.ProfileResponse)

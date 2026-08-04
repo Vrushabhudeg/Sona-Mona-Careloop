@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Sparkles, Plus, Flame, Clock, LogOut, Award } from "lucide-react";
+import { Heart, Sparkles, Plus, Flame, Clock, LogOut, Award, Smartphone, Bell, Share2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useReminders, Reminder, ActivityLog } from "@/context/reminder-context";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -12,6 +12,7 @@ import { CuteReminder } from "@/components/ui/cute-reminder";
 import { ReminderModal } from "@/components/ui/reminder-modal";
 import { CuteSonaMonaNote } from "@/components/ui/cute-sona-mona-note";
 import confetti from "canvas-confetti";
+import axios from "axios";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -24,10 +25,55 @@ export default function DashboardPage() {
     handleAddReminder,
     handleReminderComplete,
     handleDeleteReminder,
+    subscribeToPushNotifications,
   } = useReminders();
+  
   const [showAddModal, setShowAddModal] = useState(false);
+  const [pushStatus, setPushStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [pushMessage, setPushMessage] = useState("");
+  const [testLoading, setTestLoading] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const standalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
+      setIsStandalone(standalone);
+    }
+  }, []);
+
+  const handleEnablePush = async () => {
+    setPushStatus("loading");
+    setPushMessage("");
+    const res = await subscribeToPushNotifications();
+    if (res.success) {
+      setPushStatus("success");
+      setPushMessage(res.message);
+      confetti({
+        particleCount: 80,
+        spread: 50,
+        colors: ["#67E8A5", "#9B86FA"],
+      });
+    } else {
+      setPushStatus("error");
+      setPushMessage(res.message);
+    }
+  };
+
+  const handleSendTestPush = async () => {
+    setTestLoading(true);
+    try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await axios.post(`${API_BASE_URL}/api/notifications/send-test?user_id=${user?.id || "d3b07384-d113-4ec6-a558-7e3077dd7d7b"}`);
+      alert(res.data.message || "Test push sent successfully!");
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to trigger test push.");
+    } finally {
+      setTestLoading(false);
+    }
+  };
 
   const isPartner = user?.user_metadata?.role === "partner" || user?.email === "vrushabh@careloop.app";
+
 
   useEffect(() => {
     if (!loading && !user) {
@@ -169,6 +215,71 @@ export default function DashboardPage() {
         {/* Sidebar Info: Daily Progress, Achievements, Activity */}
         <div className="flex flex-col gap-8">
           
+          {/* iPhone 15 Notification Setup Card */}
+          {!isPartner && (
+            <GlassCard glowColor="pink" className="flex flex-col gap-4 border border-[#FF7597]/20">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-[#FF7597]/15 text-[#FF7597] rounded-xl border border-[#FF7597]/10">
+                  <Bell size={16} />
+                </div>
+                <h3 className="font-bold font-outfit text-sm text-white">iPhone 15 Nudge Sync 🔔</h3>
+              </div>
+
+              {!isStandalone ? (
+                <div className="space-y-3 text-xs text-[#A19AA8] leading-relaxed">
+                  <p>
+                    To enable automatic background reminders on your iPhone:
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>Tap the Safari <strong>Share</strong> button at the bottom of the screen.</li>
+                    <li>Select <strong>"Add to Home Screen"</strong> from the actions list.</li>
+                    <li>Open this app from your Home Screen to enable native pushes.</li>
+                  </ol>
+                  <div className="flex items-center gap-1.5 text-[10px] text-[#FF7597] font-semibold bg-[#FF7597]/5 p-2.5 border border-[#FF7597]/10 rounded-xl">
+                    <Smartphone size={12} />
+                    <span>Required for background notifications on iOS</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  <p className="text-xs text-[#A19AA8] leading-relaxed">
+                    You have successfully added CareLoop to your Home Screen. Now configure push permissions!
+                  </p>
+                  
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={handleEnablePush}
+                      disabled={pushStatus === "loading"}
+                      className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#FF7597] to-[#9B86FA] hover:opacity-90 active:scale-95 transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+                    >
+                      <Bell size={13} />
+                      {pushStatus === "loading" ? "Activating..." : "Allow iOS Notifications"}
+                    </button>
+
+                    <button
+                      onClick={handleSendTestPush}
+                      disabled={testLoading}
+                      className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-[#A19AA8] bg-white/5 border border-white/5 hover:bg-white/10 active:scale-95 transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Share2 size={13} />
+                      {testLoading ? "Sending..." : "Send Test Alert"}
+                    </button>
+                  </div>
+
+                  {pushMessage && (
+                    <div className={`text-[11px] p-2.5 rounded-xl border ${
+                      pushStatus === "success" 
+                        ? "text-[#67E8A5] bg-[#67E8A5]/5 border-[#67E8A5]/15" 
+                        : "text-[#FF7597] bg-[#FF7597]/5 border-[#FF7597]/15"
+                    }`}>
+                      {pushMessage}
+                    </div>
+                  )}
+                </div>
+              )}
+            </GlassCard>
+          )}
+
           {/* Progress Circular Panel */}
           <GlassCard glowColor="pink" className="flex flex-col items-center gap-4 text-center">
             <h3 className="font-bold font-outfit text-md text-white">

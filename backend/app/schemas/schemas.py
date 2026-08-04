@@ -101,3 +101,21 @@ class ReelResponse(ReelBase):
 
     class Config:
         from_attributes = True
+
+# Push Notification Subscription Schemas
+class PushSubscriptionBase(BaseModel):
+    endpoint: str
+    p256dh: str
+    auth: str
+
+class PushSubscriptionCreate(PushSubscriptionBase):
+    user_id: UUID
+
+class PushSubscriptionResponse(PushSubscriptionBase):
+    id: UUID
+    user_id: UUID
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+

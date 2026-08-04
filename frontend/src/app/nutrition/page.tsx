@@ -16,6 +16,8 @@ import { useAuth } from "@/context/auth-context";
 import axios from "axios";
 
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 interface LoggedMeal {
   id: string;
   type: "breakfast" | "lunch" | "dinner" | "snack";
@@ -65,7 +67,7 @@ export default function NutritionPage() {
   // Load from database (and fallback to localStorage)
   const fetchNutritionLogs = async () => {
     try {
-      const response = await axios.get(`https://sona-mona-careloop-api.vercel.app/api/nutrition?user_id=${userId}`);
+      const response = await axios.get(`${API_BASE_URL}/api/nutrition?user_id=${userId}`);
       if (response.data && Array.isArray(response.data)) {
         // Filter logs only for TODAY
         const todayLogs = response.data.filter((log: any) => {
@@ -156,7 +158,7 @@ export default function NutritionPage() {
 
     // Sync water log to backend database
     try {
-      await axios.post(`https://sona-mona-careloop-api.vercel.app/api/nutrition?user_id=${userId}`, {
+      await axios.post(`${API_BASE_URL}/api/nutrition?user_id=${userId}`, {
         meal_type: "water",
         food_name: "Water",
         calories: 0.0,
@@ -205,7 +207,7 @@ export default function NutritionPage() {
 
     // Save to backend database
     try {
-      const response = await axios.post(`https://sona-mona-careloop-api.vercel.app/api/nutrition?user_id=${userId}`, {
+      const response = await axios.post(`${API_BASE_URL}/api/nutrition?user_id=${userId}`, {
         meal_type: mealType,
         food_name: newMeal.name,
         calories: newMeal.calories,
@@ -245,7 +247,7 @@ export default function NutritionPage() {
     // Resilient delete from database
     if (!id.startsWith("temp-")) {
       try {
-        await axios.delete(`https://sona-mona-careloop-api.vercel.app/api/nutrition/${id}`);
+        await axios.delete(`${API_BASE_URL}/api/nutrition/${id}`);
       } catch (err) {
         console.warn("Could not delete custom meal from backend database.");
       }
@@ -519,7 +521,7 @@ export default function NutritionPage() {
     // Sync all 3 meals to backend database
     for (const meal of loggedMeals) {
       try {
-        await axios.post(`https://sona-mona-careloop-api.vercel.app/api/nutrition?user_id=${userId}`, {
+        await axios.post(`${API_BASE_URL}/api/nutrition?user_id=${userId}`, {
           meal_type: meal.type,
           food_name: meal.name,
           calories: meal.calories,

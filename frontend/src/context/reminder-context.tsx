@@ -7,6 +7,19 @@ import confetti from "canvas-confetti";
 import { Check, BellRing } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export interface Reminder {
   id: string;
   title: string;
@@ -35,6 +48,7 @@ interface ReminderContextType {
   snoozeReminder: (reminder: Reminder) => void;
   activeNudge: Reminder | null;
   setActiveNudge: (nudge: Reminder | null) => void;
+  subscribeToPushNotifications: () => Promise<{ success: boolean; message: string }>;
 }
 
 const ReminderContext = createContext<ReminderContextType>({
@@ -48,6 +62,7 @@ const ReminderContext = createContext<ReminderContextType>({
   snoozeReminder: () => {},
   activeNudge: null,
   setActiveNudge: () => {},
+  subscribeToPushNotifications: async () => ({ success: false, message: "" }),
 });
 
 // Double tone arpeggio synthesized chime using Web Audio API
@@ -140,7 +155,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const fetchReminders = async () => {
     setLoadingReminders(true);
     try {
-      const response = await axios.get(`https://sona-mona-careloop-api.vercel.app/api/reminders?user_id=${userId}`);
+      const response = await axios.get(`${API_BASE_URL}/api/reminders?user_id=${userId}`);
       if (response.data && response.data.length > 0) {
         const mapped = response.data.map((r: any) => ({
           id: r.id,
@@ -165,7 +180,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const fetchLogs = async () => {
     try {
-      const response = await axios.get(`https://sona-mona-careloop-api.vercel.app/api/reminders/history?user_id=${userId}`);
+      const response = await axios.get(`${API_BASE_URL}/api/reminders/history?user_id=${userId}`);
       if (response.data && response.data.length > 0) {
         const mapped = response.data.map((h: any) => {
           const matchedRem = reminders.find(r => r.id === h.reminder_id) || defaultReminders.find(r => r.id === h.reminder_id);
@@ -265,7 +280,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setReminders((prev) => [fresh, ...prev]);
 
     try {
-      await axios.post(`https://sona-mona-careloop-api.vercel.app/api/reminders?user_id=${userId}`, {
+      await axios.post(`${API_BASE_URL}/api/reminders?user_id=${userId}`, {
         title: newR.title,
         message: newR.message,
         schedule_time: newR.schedule_time,
@@ -300,7 +315,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     try {
-      await axios.post("https://sona-mona-careloop-api.vercel.app/api/reminders/history", {
+      await axios.post(`${API_BASE_URL}/api/reminders/history`, {
         reminder_id: reminder.id,
         user_id: userId,
         status: "completed",
@@ -314,7 +329,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const handleDeleteReminder = async (reminderId: string) => {
     setReminders((prev) => prev.filter((r) => r.id !== reminderId));
     try {
-      await axios.delete(`https://sona-mona-careloop-api.vercel.app/api/reminders/${reminderId}`);
+      await axios.delete(`${API_BASE_URL}/api/reminders/${reminderId}`);
     } catch (e) {
       console.warn("Could not delete reminder from backend database.");
     }
@@ -327,6 +342,44 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setActiveNudge(reminder);
       playChime();
     }, 10000);
+  };
+
+  const subscribeToPushNotifications = async (): Promise<{ success: boolean; message: string }> => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return { success: false, message: "Notifications are not supported on this browser version." };
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        return { success: false, message: "Permission not granted. Please allow notifications in iOS Settings -> Safari." };
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      const vapidPublicKey = "BD0vydkCgyWGPEJ_hqZqIdUuAtPSvf7dpQnemf372NYY2GZI0hxyKDqq1kHoj_a6zOUSnQrSd0v229JAbEkV-bY";
+      
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      });
+
+      const subJSON = subscription.toJSON();
+      if (!subJSON.endpoint || !subJSON.keys?.p256dh || !subJSON.keys?.auth) {
+        return { success: false, message: "Web Push subscription payload is incomplete." };
+      }
+
+      await axios.post(`${API_BASE_URL}/api/notifications/subscribe`, {
+        user_id: userId,
+        endpoint: subJSON.endpoint,
+        p256dh: subJSON.keys.p256dh,
+        auth: subJSON.keys.auth
+      });
+
+      return { success: true, message: "Notifications successfully enabled! ❤️" };
+    } catch (err: any) {
+      console.warn("Subscription creation error:", err);
+      return { success: false, message: err.message || "Failed to set up push notifications." };
+    }
   };
 
   return (
@@ -342,6 +395,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         snoozeReminder,
         activeNudge,
         setActiveNudge,
+        subscribeToPushNotifications,
       }}
     >
       {children}
