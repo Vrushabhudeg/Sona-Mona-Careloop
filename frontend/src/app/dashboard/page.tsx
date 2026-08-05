@@ -355,17 +355,24 @@ export default function DashboardPage() {
             </h3>
             
             <div className="flex flex-col gap-3.5 max-h-[200px] overflow-y-auto pr-1">
-              {logs.map((log) => (
-                <div key={log.id} className="flex justify-between items-center text-xs p-3 bg-white/3 border border-white/5 rounded-xl">
-                  <div>
-                    <h4 className="font-bold text-white font-outfit">{log.title}</h4>
-                    <p className="text-[10px] text-[#67E8A5] font-inter mt-0.5">{log.action}</p>
-                  </div>
-                  <span className="text-[10px] text-[#A19AA8] flex items-center gap-1 font-medium font-inter">
-                    <Clock size={10} /> {log.time}
-                  </span>
+              {logs.length === 0 ? (
+                <div className="text-center py-6 text-[11px] text-[#A19AA8] leading-relaxed border border-dashed border-white/5 rounded-2xl bg-white/1 select-none">
+                  No activity checked off today. 🌸<br />
+                  Complete your active nudges to track progress!
                 </div>
-              ))}
+              ) : (
+                logs.map((log) => (
+                  <div key={log.id} className="flex justify-between items-center text-xs p-3 bg-white/3 border border-white/5 rounded-xl">
+                    <div>
+                      <h4 className="font-bold text-white font-outfit">{log.title}</h4>
+                      <p className="text-[10px] text-[#67E8A5] font-inter mt-0.5">{log.action}</p>
+                    </div>
+                    <span className="text-[10px] text-[#A19AA8] flex items-center gap-1 font-medium font-inter">
+                      <Clock size={10} /> {log.time}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </GlassCard>
 

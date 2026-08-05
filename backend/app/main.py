@@ -160,10 +160,46 @@ def health_check(db: Session = Depends(get_db)):
             detail=f"Database connection error: {str(e)}"
         )
 
+def ensure_profile_exists(db: Session, user_id: UUID, email: str = None, full_name: str = None):
+    profile = db.query(models.Profile).filter(models.Profile.id == user_id).first()
+    if not profile:
+        role = "user"
+        if str(user_id) == "d3b07384-d113-4ec6-a558-7e3077dd7d7b":
+            email = "sona@careloop.app"
+            full_name = "Sona"
+            role = "user"
+        elif str(user_id) == "5f8288b8-0c6e-4e4b-b0b3-f6cd64d5ee2c":
+            email = "vrushabh@careloop.app"
+            full_name = "Vrushabh"
+            role = "partner"
+        else:
+            if not email:
+                email = f"user_{str(user_id)}@careloop.app"
+            if not full_name:
+                full_name = "CareLoop User"
+        
+        # Check if email is already taken
+        existing_email = db.query(models.Profile).filter(models.Profile.email == email).first()
+        if existing_email:
+            email = f"user_{str(user_id)}_{int(datetime.datetime.utcnow().timestamp())}@careloop.app"
+            
+        profile = models.Profile(
+            id=user_id,
+            email=email,
+            full_name=full_name,
+            role=role
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    return profile
+
+
 # --- PUSH NOTIFICATIONS ENDPOINTS ---
 @app.post("/api/notifications/subscribe")
 def subscribe(payload: schemas.PushSubscriptionCreate, db: Session = Depends(get_db)):
     try:
+        ensure_profile_exists(db, payload.user_id)
         # Check if already exists
         existing = db.query(models.PushSubscription).filter(
             models.PushSubscription.endpoint == payload.endpoint
@@ -314,6 +350,7 @@ def get_reminders(user_id: UUID, db: Session = Depends(get_db)):
 @app.post("/api/reminders", response_model=schemas.ReminderResponse, status_code=status.HTTP_201_CREATED)
 def create_reminder(user_id: UUID, reminder: schemas.ReminderCreate, db: Session = Depends(get_db)):
     try:
+        ensure_profile_exists(db, user_id)
         db_reminder = models.Reminder(
             id=uuid4(),
             user_id=user_id,
@@ -383,6 +420,7 @@ def get_reminder_history(user_id: UUID, db: Session = Depends(get_db)):
 @app.post("/api/reminders/history", response_model=schemas.ReminderHistoryResponse, status_code=status.HTTP_201_CREATED)
 def create_history_log(log: schemas.ReminderHistoryCreate, db: Session = Depends(get_db)):
     try:
+        ensure_profile_exists(db, log.user_id)
         db_log = models.ReminderHistory(
             id=uuid4(),
             user_id=log.user_id,
@@ -416,6 +454,7 @@ def get_nutrition_logs(user_id: UUID, db: Session = Depends(get_db)):
 @app.post("/api/nutrition", response_model=schemas.NutritionLogResponse, status_code=status.HTTP_201_CREATED)
 def log_nutrition(user_id: UUID, log: schemas.NutritionLogCreate, db: Session = Depends(get_db)):
     try:
+        ensure_profile_exists(db, user_id)
         db_log = models.NutritionLog(
             id=uuid4(),
             user_id=user_id,

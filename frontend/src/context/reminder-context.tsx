@@ -194,17 +194,10 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
         setLogs(mapped);
       } else {
-        // Fallback demo activities
-        setLogs([
-          { id: "l1", title: "🏃 Night Walk", action: "Completed", time: "10:14 PM" },
-          { id: "l2", title: "🏢 WFO Meal & Hydration", action: "Completed", time: "02:42 PM" },
-        ]);
+        setLogs([]);
       }
     } catch (e) {
-      setLogs([
-        { id: "l1", title: "🏃 Night Walk", action: "Completed", time: "10:14 PM" },
-        { id: "l2", title: "🏢 WFO Meal & Hydration", action: "Completed", time: "02:42 PM" },
-      ]);
+      setLogs([]);
     }
   };
 

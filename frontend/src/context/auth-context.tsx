@@ -39,6 +39,18 @@ async function hashPassword(password: string): Promise<string> {
     .join("");
 }
 
+// Helper to generate a valid UUID v4
+function generateUUID(): string {
+  if (typeof window !== "undefined" && window.crypto && window.crypto.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -125,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const hashed = await hashPassword(pass);
         const newUser = {
-          id: Date.now().toString(),
+          id: generateUUID(),
           name,
           identifier,
           isPhone,
