@@ -1,3 +1,13 @@
+# Monkeypatch cryptography to fix pywebpush compatibility issue with cryptography>=42.0.0
+# where passing ec.SECP256R1 class instead of instance raises TypeError
+import cryptography.hazmat.primitives.asymmetric.ec as ec
+original_generate_private_key = ec.generate_private_key
+def custom_generate_private_key(curve, backend=None):
+    if curve == ec.SECP256R1:
+        curve = ec.SECP256R1()
+    return original_generate_private_key(curve, backend)
+ec.generate_private_key = custom_generate_private_key
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -27,7 +37,7 @@ def send_web_push(subscription_info, data_str):
             subscription_info=subscription_info,
             data=data_str,
             vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims=VAPID_CLAIMS
+            vapid_claims=dict(VAPID_CLAIMS)
         )
         return True
     except WebPushException as ex:
@@ -59,12 +69,10 @@ def parse_schedule_time_py(time_str: str):
         return None
 
 def get_current_local_time():
-    now = datetime.datetime.now()
-    import time as pytime
-    # If server is in UTC (like Vercel production), offset to Sona's local time (IST, +5:30)
-    if pytime.tzname[0] in ("UTC", "Coordinated Universal Time", "GMT"):
-        return now + datetime.timedelta(hours=5, minutes=30)
-    return now
+    # Sona's local time is always IST (UTC +5:30)
+    # Fetch UTC time and offset it explicitly to avoid platform-dependent timezone naming issues.
+    utc_now = datetime.datetime.now(datetime.timezone.utc)
+    return utc_now + datetime.timedelta(hours=5, minutes=30)
 
 def check_active_reminders_and_send(db: Session):
     now = get_current_local_time()
@@ -108,7 +116,8 @@ def check_active_reminders_and_send(db: Session):
                             user_id=reminder.user_id,
                             reminder_id=reminder.id,
                             status="sent",
-                            action_time=datetime.datetime.utcnow()
+                            action_time=datetime.datetime.utcnow(),
+                            created_at=datetime.datetime.utcnow()
                         )
                         db.add(history_log)
     db.commit()
@@ -217,7 +226,8 @@ def subscribe(payload: schemas.PushSubscriptionCreate, db: Session = Depends(get
             user_id=payload.user_id,
             endpoint=payload.endpoint,
             p256dh=payload.p256dh,
-            auth=payload.auth
+            auth=payload.auth,
+            created_at=datetime.datetime.utcnow()
         )
         db.add(db_sub)
         db.commit()
@@ -357,7 +367,9 @@ def create_reminder(user_id: UUID, reminder: schemas.ReminderCreate, db: Session
             title=reminder.title,
             message=reminder.message,
             schedule_time=reminder.schedule_time,
-            is_active=reminder.is_active
+            is_active=reminder.is_active,
+            created_at=datetime.datetime.utcnow(),
+            updated_at=datetime.datetime.utcnow()
         )
         db.add(db_reminder)
         db.commit()
@@ -426,7 +438,8 @@ def create_history_log(log: schemas.ReminderHistoryCreate, db: Session = Depends
             user_id=log.user_id,
             reminder_id=log.reminder_id,
             status=log.status,
-            action_time=log.action_time or datetime.datetime.utcnow()
+            action_time=log.action_time or datetime.datetime.utcnow(),
+            created_at=datetime.datetime.utcnow()
         )
         db.add(db_log)
         db.commit()
