@@ -11,6 +11,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { CuteReminder } from "@/components/ui/cute-reminder";
 import { ReminderModal } from "@/components/ui/reminder-modal";
 import { CuteSonaMonaNote } from "@/components/ui/cute-sona-mona-note";
+import { AppLogo } from "@/components/ui/app-logo";
 import confetti from "canvas-confetti";
 import axios from "axios";
 
@@ -119,10 +120,8 @@ export default function DashboardPage() {
       
       {/* Top Navbar */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 pb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF7597] to-[#9B86FA] flex items-center justify-center text-white text-sm font-bold shadow-md">
-            ❤️
-          </div>
+        <div className="flex items-center gap-2.5">
+          <AppLogo size="sm" />
           <span className="font-outfit font-extrabold text-lg text-white">CareLoop</span>
         </div>
 

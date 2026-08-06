@@ -58,7 +58,7 @@ class ReminderHistoryCreate(ReminderHistoryBase):
 class ReminderHistoryResponse(ReminderHistoryBase):
     id: UUID
     user_id: UUID
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

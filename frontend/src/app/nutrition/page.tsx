@@ -9,6 +9,7 @@ import {
   Dumbbell, CheckSquare, Smile, Calendar, Award, AlertCircle
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
+import { AppLogo } from "@/components/ui/app-logo";
 import { CuteSonaMonaNote } from "@/components/ui/cute-sona-mona-note";
 import confetti from "canvas-confetti";
 import { useRouter } from "next/navigation";
@@ -569,7 +570,7 @@ export default function NutritionPage() {
             Yoga & Reels 🧘‍♀️
           </Link>
           <div className="flex items-center gap-1.5 text-white">
-            <span>❤️</span>
+            <AppLogo size="sm" />
             <span className="font-outfit font-extrabold">CareLoop Bloom for Sona</span>
           </div>
         </div>

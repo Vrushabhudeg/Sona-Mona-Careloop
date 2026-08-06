@@ -8,6 +8,7 @@ import { PhoneMockup } from "@/components/landing/phone-mockup";
 import { CuteReminder } from "@/components/ui/cute-reminder";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CuteSonaMonaNote } from "@/components/ui/cute-sona-mona-note";
+import { AppLogo } from "@/components/ui/app-logo";
 
 export default function LandingPage() {
   return (
@@ -16,10 +17,8 @@ export default function LandingPage() {
       {/* Premium Glassy Navbar */}
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0B0A0F]/60 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity shrink-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF7597] to-[#9B86FA] flex items-center justify-center text-white shadow-md cute-shadow-pink font-bold">
-              ❤️
-            </div>
+          <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity shrink-0">
+            <AppLogo size="sm" />
             <span className="font-outfit font-extrabold text-lg sm:text-xl bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
               CareLoop
             </span>

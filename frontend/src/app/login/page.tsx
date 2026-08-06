@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Sparkles, Lock, Heart, Shield } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { useAuth } from "@/context/auth-context";
+import { AppLogo } from "@/components/ui/app-logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -64,9 +65,7 @@ export default function LoginPage() {
           transition={{ duration: 0.5 }}
           className="flex justify-center mb-6"
         >
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#FF7597] to-[#9B86FA] flex items-center justify-center text-white text-2xl font-bold shadow-lg cute-shadow-pink select-none animate-bounce">
-            ❤️
-          </div>
+          <AppLogo size="lg" className="animate-bounce" />
         </motion.div>
         
         <h2 className="font-outfit text-4xl font-extrabold tracking-tight text-white">

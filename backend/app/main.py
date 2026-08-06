@@ -79,6 +79,12 @@ def check_active_reminders_and_send(db: Session):
     current_hour = now.hour
     current_minute = now.minute
     
+    # Calculate start of today in local time (IST, UTC+5:30)
+    # Start of local today is 00:00:00 local time
+    local_today_start = datetime.datetime(now.year, now.month, now.day, 0, 0, 0)
+    # Convert local today start to UTC: subtract 5 hours and 30 minutes
+    utc_today_start = local_today_start - datetime.timedelta(hours=5, minutes=30)
+    
     # We load active reminders
     reminders = db.query(models.Reminder).filter(models.Reminder.is_active == True).all()
     sent_count = 0
@@ -89,37 +95,51 @@ def check_active_reminders_and_send(db: Session):
             continue
         
         rem_hour, rem_minute = parsed
-        if rem_hour == current_hour and rem_minute == current_minute:
-            subs = db.query(models.PushSubscription).filter(
-                models.PushSubscription.user_id == reminder.user_id
-            ).all()
+        
+        # Check if the scheduled time is due today (scheduled time <= current local time)
+        is_due = (rem_hour < current_hour) or (rem_hour == current_hour and rem_minute <= current_minute)
+        
+        if is_due:
+            # Check if we have already sent/completed/snoozed this reminder today
+            # We look for any history log created today (created_at >= utc_today_start)
+            history_exists = db.query(models.ReminderHistory).filter(
+                models.ReminderHistory.reminder_id == reminder.id,
+                models.ReminderHistory.created_at >= utc_today_start
+            ).first()
             
-            if subs:
-                payload = json.dumps({
-                    "title": reminder.title,
-                    "body": reminder.message or "Time for a sweet check-off! ❤️"
-                })
-                for sub in subs:
-                    sub_info = {
-                        "endpoint": sub.endpoint,
-                        "keys": {
-                            "p256dh": sub.p256dh,
-                            "auth": sub.auth
+            if not history_exists:
+                subs = db.query(models.PushSubscription).filter(
+                    models.PushSubscription.user_id == reminder.user_id
+                ).all()
+                
+                if subs:
+                    payload = json.dumps({
+                        "title": reminder.title,
+                        "body": reminder.message or "Time for a sweet check-off! ❤️"
+                    })
+                    sent_to_any = False
+                    for sub in subs:
+                        sub_info = {
+                            "endpoint": sub.endpoint,
+                            "keys": {
+                                "p256dh": sub.p256dh,
+                                "auth": sub.auth
+                            }
                         }
-                    }
-                    if send_web_push(sub_info, payload):
-                        sent_count += 1
-                        
-                        # Log sending to history
-                        history_log = models.ReminderHistory(
-                            id=uuid4(),
-                            user_id=reminder.user_id,
-                            reminder_id=reminder.id,
-                            status="sent",
-                            action_time=datetime.datetime.utcnow(),
-                            created_at=datetime.datetime.utcnow()
-                        )
-                        db.add(history_log)
+                        if send_web_push(sub_info, payload):
+                            sent_count += 1
+                            sent_to_any = True
+                    
+                    # Log sending to history to prevent double sending today
+                    history_log = models.ReminderHistory(
+                        id=uuid4(),
+                        user_id=reminder.user_id,
+                        reminder_id=reminder.id,
+                        status="sent",
+                        action_time=datetime.datetime.utcnow(),
+                        created_at=datetime.datetime.utcnow()
+                    )
+                    db.add(history_log)
     db.commit()
     return sent_count
 
@@ -135,7 +155,8 @@ async def check_reminders_loop():
                 db.close()
         except Exception as e:
             print("Error in check_reminders_loop background worker:", e)
-        await asyncio.sleep(60)
+        # Sleep for 30 seconds instead of 60 seconds to respond quickly to scheduled times
+        await asyncio.sleep(30)
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
