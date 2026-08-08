@@ -10,13 +10,19 @@ import { AppLogo } from "@/components/ui/app-logo";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signInUser } = useAuth();
+  const { user, signInUser, loading: authLoading } = useAuth();
   
   const [role, setRole] = useState<"user" | "admin">("user");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  React.useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

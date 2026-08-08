@@ -12,6 +12,8 @@ interface CuteReminderProps {
   emoji?: string;
   time: string;
   days?: string;
+  isReceived?: boolean;
+  isCompleted?: boolean;
   onComplete?: () => void;
   onSnooze?: () => void;
   onDelete?: () => void;
@@ -23,15 +25,15 @@ export const CuteReminder: React.FC<CuteReminderProps> = ({
   emoji = "🌸",
   time,
   days,
+  isReceived,
+  isCompleted,
   onComplete,
   onSnooze,
   onDelete,
 }) => {
-  const [status, setStatus] = useState<"pending" | "completed" | "snoozed">("pending");
+  const [snoozed, setSnoozed] = useState(false);
 
   const handleComplete = () => {
-    setStatus("completed");
-    
     // Trigger colorful confetti celebration
     confetti({
       particleCount: 80,
@@ -44,14 +46,16 @@ export const CuteReminder: React.FC<CuteReminderProps> = ({
   };
 
   const handleSnooze = () => {
-    setStatus("snoozed");
+    setSnoozed(true);
     if (onSnooze) onSnooze();
     
     // Automatically reset to pending after 5 seconds to showcase repeat interaction
     setTimeout(() => {
-      setStatus("pending");
+      setSnoozed(false);
     }, 5000);
   };
+
+  const status = isCompleted ? "completed" : snoozed ? "snoozed" : "pending";
 
   return (
     <AnimatePresence mode="wait">
@@ -68,13 +72,24 @@ export const CuteReminder: React.FC<CuteReminderProps> = ({
         )}
       >
         <div className="flex gap-4">
-          <div className="text-3xl flex items-center justify-center bg-white/5 rounded-2xl p-3 w-14 h-14 border border-white/5 select-none">
+          <div className="text-3xl flex items-center justify-center bg-white/5 rounded-2xl p-3 w-14 h-14 border border-white/5 select-none animate-pulse">
             {emoji}
           </div>
           <div className="flex-1">
             <div className="flex justify-between items-start">
-              <h3 className="font-semibold text-lg text-white font-outfit flex items-center gap-1.5">
-                {title}
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-semibold text-lg text-white font-outfit flex items-center gap-1.5">
+                  {title}
+                </h3>
+                {isReceived && !isCompleted && (
+                  <motion.span 
+                    initial={{ scale: 0 }} 
+                    animate={{ scale: 1 }} 
+                    className="text-[#9B86FA] text-[10px] bg-[#9B86FA]/15 border border-[#9B86FA]/25 px-2.5 py-0.5 rounded-full flex items-center gap-0.5 font-sans font-bold uppercase tracking-wider animate-pulse"
+                  >
+                    Received 🔔
+                  </motion.span>
+                )}
                 {status === "completed" && (
                   <motion.span 
                     initial={{ scale: 0 }} 
@@ -84,7 +99,7 @@ export const CuteReminder: React.FC<CuteReminderProps> = ({
                     <Check size={10} /> Done!
                   </motion.span>
                 )}
-              </h3>
+              </div>
               <div className="flex gap-1.5 items-center">
                 {days && (
                   <span className="text-[9px] text-[#FF7597] bg-[#FF7597]/10 border border-[#FF7597]/25 px-2 py-0.5 rounded-full font-bold select-none uppercase">

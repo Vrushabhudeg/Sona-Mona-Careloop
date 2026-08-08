@@ -29,6 +29,7 @@ interface AdminReminder {
   title: string;
   message: string;
   schedule_time: string;
+  days?: string;
   is_active: boolean;
 }
 
@@ -65,6 +66,7 @@ export default function AdminDashboardPage() {
   const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
   const [editingTime, setEditingTime] = useState("");
   const [editingMessage, setEditingMessage] = useState("");
+  const [editingDays, setEditingDays] = useState("");
   const [deletingReminderId, setDeletingReminderId] = useState<string | null>(null);
 
 
@@ -126,20 +128,22 @@ export default function AdminDashboardPage() {
     setAdminLogs(defaultLogs);
   }, []);
 
-  const handleUpdateReminderData = async (reminderId: string, newTime: string, newMessage: string) => {
+  const handleUpdateReminderData = async (reminderId: string, newTime: string, newMessage: string, newDays: string) => {
     if (!newTime.trim()) return;
 
     // Optimistically update screen
-    setReminders(prev => prev.map(r => r.id === reminderId ? { ...r, schedule_time: newTime, message: newMessage } : r));
+    setReminders(prev => prev.map(r => r.id === reminderId ? { ...r, schedule_time: newTime, message: newMessage, days: newDays } : r));
     setEditingReminderId(null);
     setEditingTime("");
     setEditingMessage("");
+    setEditingDays("");
 
     // Update backend API
     try {
       await axios.put(`${API_BASE_URL}/api/reminders/${reminderId}`, {
         schedule_time: newTime,
-        message: newMessage
+        message: newMessage,
+        days: newDays
       });
 
       // Add to admin activity log
@@ -147,7 +151,7 @@ export default function AdminDashboardPage() {
       const newLog: AdminLog = {
         id: Date.now().toString(),
         user_name: "Admin",
-        action: `Updated reminder "${matchedTitle}" (time: ${newTime}, message: "${newMessage}")`,
+        action: `Updated reminder "${matchedTitle}" (time: ${newTime}, message: "${newMessage}", days: "${newDays}")`,
         time: "Just now",
         type: "nudge"
       };
@@ -548,6 +552,7 @@ export default function AdminDashboardPage() {
                 <th className="pb-3 pr-2">Reminder Title</th>
                 <th className="pb-3 pr-2">Message Nudge</th>
                 <th className="pb-3 pr-2">Scheduled Time</th>
+                <th className="pb-3 pr-2">Active Days</th>
                 <th className="pb-3 pr-2">Status</th>
                 <th className="pb-3 text-right">Actions</th>
               </tr>
@@ -589,6 +594,21 @@ export default function AdminDashboardPage() {
                       )}
                     </td>
                     <td className="py-3 pr-2">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editingDays}
+                          onChange={(e) => setEditingDays(e.target.value)}
+                          className="bg-white/5 border border-white/15 rounded-lg px-2 py-1 text-xs text-white w-28 focus:outline-none focus:border-[#9B86FA]"
+                          placeholder="e.g. Mon, Tue, Thu"
+                        />
+                      ) : (
+                        <span className="font-semibold text-white bg-white/5 border border-white/5 px-2 py-1 rounded-lg">
+                          {rem.days || "Daily"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-2">
                       <span className={`px-2 py-0.5 rounded text-[10px] ${rem.is_active ? "bg-[#67E8A5]/20 text-[#67E8A5]" : "bg-white/10 text-[#A19AA8]"}`}>
                         {rem.is_active ? "Active" : "Inactive"}
                       </span>
@@ -598,7 +618,7 @@ export default function AdminDashboardPage() {
                         {isEditing ? (
                           <>
                             <button
-                              onClick={() => handleUpdateReminderData(rem.id, editingTime, editingMessage)}
+                              onClick={() => handleUpdateReminderData(rem.id, editingTime, editingMessage, editingDays)}
                               className="p-1.5 rounded-lg bg-[#67E8A5]/15 text-[#67E8A5] border border-[#67E8A5]/25 hover:bg-[#67E8A5]/25 transition-colors cursor-pointer"
                               title="Save Changes"
                             >
@@ -609,6 +629,7 @@ export default function AdminDashboardPage() {
                                 setEditingReminderId(null);
                                 setEditingTime("");
                                 setEditingMessage("");
+                                setEditingDays("");
                               }}
                               className="p-1.5 rounded-lg bg-white/5 text-[#A19AA8] border border-white/5 hover:bg-white/10 transition-colors cursor-pointer"
                               title="Cancel"
@@ -640,6 +661,7 @@ export default function AdminDashboardPage() {
                                     setEditingReminderId(rem.id);
                                     setEditingTime(rem.schedule_time);
                                     setEditingMessage(rem.message);
+                                    setEditingDays(rem.days || "Daily");
                                   }}
                                   className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-[#A19AA8] hover:text-[#9B86FA] hover:bg-[#9B86FA]/10 transition-all cursor-pointer"
                                   title="Edit Reminder"
@@ -698,6 +720,14 @@ export default function AdminDashboardPage() {
                         onChange={(e) => setEditingTime(e.target.value)}
                         className="bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white w-full max-w-[120px] focus:outline-none focus:border-[#9B86FA]"
                       />
+                      <label className="text-[10px] text-[#A19AA8] font-bold uppercase mt-1">Active Days</label>
+                      <input
+                        type="text"
+                        value={editingDays}
+                        onChange={(e) => setEditingDays(e.target.value)}
+                        className="bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white w-full max-w-[200px] focus:outline-none focus:border-[#9B86FA]"
+                        placeholder="e.g. Mon, Tue, Thu"
+                      />
                     </div>
                   ) : (
                     <p className="text-xs text-[#A19AA8] leading-relaxed mt-0.5">{rem.message}</p>
@@ -705,11 +735,16 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-1">
-                  <div>
+                  <div className="flex flex-wrap gap-1.5">
                     {!isEditing && (
-                      <span className="text-[11px] font-semibold text-white bg-white/5 border border-white/5 px-2 py-1 rounded-lg">
-                        ⏰ {rem.schedule_time}
-                      </span>
+                      <>
+                        <span className="text-[11px] font-semibold text-white bg-white/5 border border-white/5 px-2 py-1 rounded-lg">
+                          ⏰ {rem.schedule_time}
+                        </span>
+                        <span className="text-[11px] font-semibold text-[#FF7597] bg-[#FF7597]/15 border border-[#FF7597]/20 px-2 py-1 rounded-lg">
+                          📅 {rem.days || "Daily"}
+                        </span>
+                      </>
                     )}
                   </div>
 
@@ -717,7 +752,7 @@ export default function AdminDashboardPage() {
                     {isEditing ? (
                       <>
                         <button
-                          onClick={() => handleUpdateReminderData(rem.id, editingTime, editingMessage)}
+                          onClick={() => handleUpdateReminderData(rem.id, editingTime, editingMessage, editingDays)}
                           className="px-3 py-1.5 rounded-lg bg-[#67E8A5]/15 text-[#67E8A5] border border-[#67E8A5]/25 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
                         >
                           <Check size={12} /> Save
@@ -727,6 +762,7 @@ export default function AdminDashboardPage() {
                             setEditingReminderId(null);
                             setEditingTime("");
                             setEditingMessage("");
+                            setEditingDays("");
                           }}
                           className="px-3 py-1.5 rounded-lg bg-white/5 text-[#A19AA8] border border-white/5 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
                         >
@@ -757,6 +793,7 @@ export default function AdminDashboardPage() {
                                 setEditingReminderId(rem.id);
                                 setEditingTime(rem.schedule_time);
                                 setEditingMessage(rem.message);
+                                setEditingDays(rem.days || "Daily");
                               }}
                               className="p-2 rounded-xl bg-white/5 border border-white/5 text-[#A19AA8] hover:text-[#9B86FA] hover:bg-[#9B86FA]/10 transition-all cursor-pointer"
                               title="Edit Reminder"

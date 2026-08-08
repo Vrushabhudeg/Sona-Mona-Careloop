@@ -39,6 +39,7 @@ class Reminder(Base):
     title = Column(String, nullable=False)
     message = Column(Text, nullable=True)
     schedule_time = Column(String, nullable=False)  # HH:MM format
+    days = Column(String, default="Daily", nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

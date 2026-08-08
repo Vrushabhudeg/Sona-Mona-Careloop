@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Heart, Sparkles, ArrowRight, Smile, Activity, Apple, Dumbbell } from "lucide-react";
@@ -9,8 +9,18 @@ import { CuteReminder } from "@/components/ui/cute-reminder";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CuteSonaMonaNote } from "@/components/ui/cute-sona-mona-note";
 import { AppLogo } from "@/components/ui/app-logo";
+import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, loading, router]);
   return (
     <div className="min-h-screen flex flex-col font-sans select-none overflow-x-hidden">
       

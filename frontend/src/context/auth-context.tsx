@@ -67,18 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (activeSession) {
         setUser(JSON.parse(activeSession));
       } else {
-        // Initial default demo user Sona
-        setUser({
-          id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b",
-          email: "sona@careloop.app",
-          user_metadata: {
-            full_name: "Sona",
-            avatar_url: "",
-          },
-          app_metadata: {},
-          aud: "authenticated",
-          created_at: new Date().toISOString(),
-        } as User);
+        setUser(null);
       }
       setLoading(false);
       return;

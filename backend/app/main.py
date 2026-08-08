@@ -74,6 +74,127 @@ def get_current_local_time():
     utc_now = datetime.datetime.now(datetime.timezone.utc)
     return utc_now + datetime.timedelta(hours=5, minutes=30)
 
+def is_reminder_scheduled_for_today(days_str: Optional[str], local_now: datetime.datetime) -> bool:
+    if not days_str:
+        return True
+    
+    days_lower = days_str.lower()
+    if "daily" in days_lower or "everyday" in days_lower or days_str.strip() == "":
+        return True
+        
+    weekday_num = local_now.weekday() # 0 = Monday, ..., 6 = Sunday
+    day_names_short = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    day_names_full = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    
+    current_short = day_names_short[weekday_num]
+    current_full = day_names_full[weekday_num]
+    
+    # Split by commas, spaces, etc.
+    parts = [p.strip().strip(",") for p in re.split(r'[\s,]+', days_lower) if p.strip()]
+    
+    for part in parts:
+        if part == current_short or part == current_full:
+            return True
+            
+    return False
+
+def seed_sona_reminders(db: Session):
+    sona_id = UUID("d3b07384-d113-4ec6-a558-7e3077dd7d7b")
+    # Make sure Sona's profile exists
+    ensure_profile_exists(db, sona_id)
+    
+    # Check if Sona has any reminders
+    existing_count = db.query(models.Reminder).filter(models.Reminder.user_id == sona_id).count()
+    if existing_count > 0:
+        return
+        
+    # Seed reminders
+    seed_data = [
+        # Mon, Tue, Thu
+        {
+            "title": "💧 Morning Hydration",
+            "message": "Please drink lots of water to stay fresh and healthy! ❤️",
+            "schedule_time": "10:00 AM",
+            "days": "Mon, Tue, Thu"
+        },
+        {
+            "title": "🍎 Evening Fruit",
+            "message": "Time to eat a plate of fresh fruit and energize yourself. 🍓",
+            "schedule_time": "04:30 PM",
+            "days": "Mon, Tue, Thu"
+        },
+        {
+            "title": "🍽️ Dinner Time",
+            "message": "Time to have dinner on time, please don't be late! Dinner is served. 🍲",
+            "schedule_time": "08:30 PM",
+            "days": "Mon, Tue, Thu"
+        },
+        {
+            "title": "🚶 Night Walk",
+            "message": "Let's go on a gentle night walk together to clear our minds! 🌙",
+            "schedule_time": "10:30 PM",
+            "days": "Mon, Tue, Thu"
+        },
+        {
+            "title": "🛌 Time to Sleep",
+            "message": "Please go to sleep on time tonight. Sweet dreams, love! 😴",
+            "schedule_time": "12:00 AM",
+            "days": "Mon, Tue, Thu"
+        },
+        # Wed, Fri
+        {
+            "title": "🍳 Healthy Breakfast",
+            "message": "Please have breakfast, don't leave on an empty stomach. 🥞",
+            "schedule_time": "10:00 AM",
+            "days": "Wed, Fri"
+        },
+        {
+            "title": "🏢 Office Arrival",
+            "message": "Hope you reached safely.. have a beautiful day you beautiful, I'm proud of you. ❤️",
+            "schedule_time": "01:00 PM",
+            "days": "Wed, Fri"
+        },
+        {
+            "title": "🍱 Office Lunch",
+            "message": "Please don't forget your lunch in your hectic meetings. Eat well! 🥗",
+            "schedule_time": "02:30 PM",
+            "days": "Wed, Fri"
+        },
+        {
+            "title": "💧 Office Hydration",
+            "message": "Please stay hydrated. Keep a water bottle close! 🥛",
+            "schedule_time": "04:00 PM",
+            "days": "Wed, Fri"
+        },
+        {
+            "title": "🚗 Leave Office",
+            "message": "Hope you left the office, please be careful don't rush. I'm waiting.... and not the last but the least, I'm proud of you ❤️",
+            "schedule_time": "09:00 PM",
+            "days": "Wed, Fri"
+        },
+        {
+            "title": "🛌 Time to Sleep (Office Day)",
+            "message": "Please sleep on time tonight. Rest well! 😴",
+            "schedule_time": "12:00 AM",
+            "days": "Wed, Fri"
+        }
+    ]
+    
+    for item in seed_data:
+        db_reminder = models.Reminder(
+            id=uuid4(),
+            user_id=sona_id,
+            title=item["title"],
+            message=item["message"],
+            schedule_time=item["schedule_time"],
+            days=item["days"],
+            is_active=True,
+            created_at=datetime.datetime.utcnow(),
+            updated_at=datetime.datetime.utcnow()
+        )
+        db.add(db_reminder)
+    db.commit()
+
 def check_active_reminders_and_send(db: Session):
     now = get_current_local_time()
     current_hour = now.hour
@@ -99,7 +220,7 @@ def check_active_reminders_and_send(db: Session):
         # Check if the scheduled time is due today (scheduled time <= current local time)
         is_due = (rem_hour < current_hour) or (rem_hour == current_hour and rem_minute <= current_minute)
         
-        if is_due:
+        if is_due and is_reminder_scheduled_for_today(reminder.days, now):
             # Check if we have already sent/completed/snoozed this reminder today
             # We look for any history log created today (created_at >= utc_today_start)
             history_exists = db.query(models.ReminderHistory).filter(
@@ -155,13 +276,26 @@ async def check_reminders_loop():
                 db.close()
         except Exception as e:
             print("Error in check_reminders_loop background worker:", e)
-        # Sleep for 30 seconds instead of 60 seconds to respond quickly to scheduled times
-        await asyncio.sleep(30)
+        # Sleep for 10 seconds to respond quickly to scheduled times
+        await asyncio.sleep(10)
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
 @app.on_event("startup")
-def start_background_workers():
+def run_migrations_and_start_workers():
+    # Run migration to add 'days' column to reminders table if it doesn't exist
+    db = SessionLocal()
+    try:
+        db.execute(text("ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS days TEXT DEFAULT 'Daily'"))
+        db.commit()
+        # Seed reminders for Sona
+        seed_sona_reminders(db)
+    except Exception as e:
+        print("Migration or seeding error on startup:", e)
+        db.rollback()
+    finally:
+        db.close()
+    
     asyncio.create_task(check_reminders_loop())
 
 Base.metadata.create_all(bind=engine)
@@ -388,6 +522,7 @@ def create_reminder(user_id: UUID, reminder: schemas.ReminderCreate, db: Session
             title=reminder.title,
             message=reminder.message,
             schedule_time=reminder.schedule_time,
+            days=reminder.days,
             is_active=reminder.is_active,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow()
@@ -404,6 +539,7 @@ def create_reminder(user_id: UUID, reminder: schemas.ReminderCreate, db: Session
             "title": reminder.title,
             "message": reminder.message,
             "schedule_time": reminder.schedule_time,
+            "days": reminder.days,
             "is_active": reminder.is_active,
             "created_at": datetime.datetime.utcnow(),
             "updated_at": datetime.datetime.utcnow()
@@ -421,6 +557,8 @@ def update_reminder(reminder_id: UUID, data: schemas.ReminderUpdate, db: Session
             db_reminder.message = data.message
         if data.schedule_time is not None:
             db_reminder.schedule_time = data.schedule_time
+        if data.days is not None:
+            db_reminder.days = data.days
         if data.is_active is not None:
             db_reminder.is_active = data.is_active
         db.commit()

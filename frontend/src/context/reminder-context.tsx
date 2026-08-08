@@ -35,6 +35,9 @@ export interface ActivityLog {
   title: string;
   action: string;
   time: string;
+  status?: string;
+  reminder_id?: string;
+  date?: string;
 }
 
 interface ReminderContextType {
@@ -42,7 +45,7 @@ interface ReminderContextType {
   logs: ActivityLog[];
   loadingReminders: boolean;
   fetchReminders: () => Promise<void>;
-  handleAddReminder: (newR: { title: string; message: string; schedule_time: string }) => Promise<void>;
+  handleAddReminder: (newR: { title: string; message: string; schedule_time: string; days?: string }) => Promise<void>;
   handleReminderComplete: (reminder: Reminder) => Promise<void>;
   handleDeleteReminder: (reminderId: string) => Promise<void>;
   snoozeReminder: (reminder: Reminder) => void;
@@ -164,7 +167,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           schedule_time: r.schedule_time,
           emoji: r.title.toLowerCase().includes("walk") ? "🏃" : r.title.toLowerCase().includes("sleep") ? "🛌" : "🌸",
           is_active: r.is_active,
-          days: r.title.toLowerCase().includes("wfo") || r.title.toLowerCase().includes("office") ? "Wed, Fri" : "Daily",
+          days: r.days || "Daily",
         }));
         setReminders(mapped);
       } else {
@@ -190,6 +193,9 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             title: matchedRem ? matchedRem.title : "Activity Done",
             action: h.status.charAt(0).toUpperCase() + h.status.slice(1),
             time: formattedTime,
+            status: h.status,
+            reminder_id: h.reminder_id,
+            date: new Date(h.action_time).toDateString(),
           };
         });
         setLogs(mapped);
@@ -260,7 +266,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => clearInterval(interval);
   }, [user, reminders, notifiedToday]);
 
-  const handleAddReminder = async (newR: { title: string; message: string; schedule_time: string }) => {
+  const handleAddReminder = async (newR: { title: string; message: string; schedule_time: string; days?: string }) => {
     const fresh: Reminder = {
       id: Date.now().toString(),
       title: newR.title,
@@ -268,6 +274,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       schedule_time: newR.schedule_time,
       emoji: "🌸",
       is_active: true,
+      days: newR.days || "Daily",
     };
 
     setReminders((prev) => [fresh, ...prev]);
@@ -277,6 +284,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         title: newR.title,
         message: newR.message,
         schedule_time: newR.schedule_time,
+        days: newR.days || "Daily",
         is_active: true,
       });
       confetti({
@@ -284,6 +292,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         spread: 40,
         colors: ["#9B86FA", "#FF7597"],
       });
+      await fetchReminders();
     } catch (err) {
       console.warn("Could not save new reminder to FastAPI database.");
     }
@@ -295,7 +304,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     // Add to activity feeds
     setLogs((prev) => [
-      { id: Date.now().toString(), title: reminder.title, action: "Completed", time: timeStr },
+      { id: Date.now().toString(), title: reminder.title, action: "Completed", time: timeStr, status: "completed", reminder_id: reminder.id, date: now.toDateString() },
       ...prev,
     ]);
 
@@ -314,6 +323,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         status: "completed",
         action_time: new Date().toISOString()
       });
+      await fetchLogs();
     } catch (err) {
       console.warn("Could not log completion to backend DB.");
     }

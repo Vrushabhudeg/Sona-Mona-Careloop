@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 interface ReminderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { title: string; message: string; schedule_time: string }) => void;
+  onSubmit: (data: { title: string; message: string; schedule_time: string; days?: string }) => void;
 }
 
 export const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, onSubmit }) => {
@@ -16,6 +16,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, o
   const [message, setMessage] = useState("");
   const [time, setTime] = useState("08:00");
   const [period, setPeriod] = useState<"AM" | "PM">("AM");
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
 
   // Client-side AI Simulation for generating heartwarming nudges
   const handleAIGenerate = () => {
@@ -52,12 +53,14 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, o
       title: title.trim(),
       message: message.trim(),
       schedule_time: `${time} ${period}`,
+      days: selectedDays.length === 0 || selectedDays.length === 7 ? "Daily" : selectedDays.join(", "),
     });
 
     setTitle("");
     setMessage("");
     setTime("08:00");
     setPeriod("AM");
+    setSelectedDays([]);
   };
 
   return (
@@ -130,6 +133,51 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, o
                   rows={3}
                   className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#FF7597] transition-colors resize-none"
                 />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-[#A19AA8] uppercase tracking-wider font-inter">
+                  Active Days
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5 bg-white/5 border border-white/10 rounded-xl p-2 border-white/5">
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => {
+                    const active = selectedDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          if (active) {
+                            setSelectedDays(selectedDays.filter((d) => d !== day));
+                          } else {
+                            setSelectedDays([...selectedDays, day]);
+                          }
+                        }}
+                        className={cn(
+                          "w-9 h-9 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center border",
+                          active
+                            ? "bg-gradient-to-r from-[#FF7597] to-[#9B86FA] text-white border-transparent shadow-sm"
+                            : "bg-white/5 text-[#A19AA8] border-white/5 hover:text-white hover:bg-white/10"
+                        )}
+                      >
+                        {day[0]}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedDays.length === 7) {
+                        setSelectedDays([]);
+                      } else {
+                        setSelectedDays(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+                      }
+                    }}
+                    className="ml-auto px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-[#FF7597] hover:text-[#9B86FA] transition-colors cursor-pointer"
+                  >
+                    {selectedDays.length === 7 ? "Clear" : "All"}
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

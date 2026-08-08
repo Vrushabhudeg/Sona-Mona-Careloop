@@ -82,20 +82,29 @@ export default function DashboardPage() {
     }
   }, [user, loading, router]);
 
-  const completedCount = logs.filter((l) => l.action === "Completed").length;
-  const progressPercent = Math.min(
-    Math.round((completedCount / (reminders.length || 4)) * 100),
-    100
-  );
+  const todayStr = new Date().toDateString();
+  const todayLogs = logs.filter((l) => l.date === todayStr);
 
-  const handleCreateReminder = async (newR: { title: string; message: string; schedule_time: string }) => {
+  const currentDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()];
+  const remindersToday = reminders.filter((r) => {
+    if (!r.days) return true;
+    const daysLower = r.days.toLowerCase();
+    return daysLower.includes("daily") || daysLower.includes("everyday") || daysLower.includes(currentDay.toLowerCase());
+  });
+
+  const completedTodayCount = todayLogs.filter((l) => l.status === "completed").length;
+  const progressPercent = remindersToday.length > 0 
+    ? Math.min(Math.round((completedTodayCount / remindersToday.length) * 100), 100)
+    : 0;
+
+  const handleCreateReminder = async (newR: { title: string; message: string; schedule_time: string; days?: string }) => {
     await handleAddReminder(newR);
     setShowAddModal(false);
   };
 
   // Big confetti if hitting 100% completion
   useEffect(() => {
-    if (completedCount > 0 && completedCount === reminders.length) {
+    if (completedTodayCount > 0 && completedTodayCount === remindersToday.length) {
       const timer = setTimeout(() => {
         confetti({
           particleCount: 150,
@@ -106,12 +115,12 @@ export default function DashboardPage() {
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [completedCount, reminders.length]);
+  }, [completedTodayCount, remindersToday.length]);
 
   // Dynamic Achievements list
   const achievementsList = [
-    { id: "a1", name: "🌱 Seedling Step", desc: "First checked-off habit today", unlocked: completedCount > 0 },
-    { id: "a2", name: "💧 Super Hydrator", desc: "Drank at least 1 liter of water", unlocked: logs.some(l => l.title.includes("Hydration")) },
+    { id: "a1", name: "🌱 Seedling Step", desc: "First checked-off habit today", unlocked: completedTodayCount > 0 },
+    { id: "a2", name: "💧 Super Hydrator", desc: "Drank at least 1 liter of water", unlocked: todayLogs.some(l => l.title.includes("Hydration")) },
     { id: "a3", name: "🏆 Perfect Score", desc: "Completed all reminders today!", unlocked: progressPercent === 100 },
   ];
 
@@ -190,23 +199,33 @@ export default function DashboardPage() {
               <div className="text-center py-8 text-xs text-[#A19AA8] animate-pulse">
                 Loading active nudges... 🌸
               </div>
-            ) : reminders.length === 0 ? (
+            ) : remindersToday.length === 0 ? (
               <div className="text-center py-10 border border-white/5 bg-white/3 rounded-2xl text-xs text-[#A19AA8]">
-                No nudges set up yet. Create one above! ❤️
+                No nudges scheduled for today! ❤️
               </div>
             ) : (
-              reminders.map((reminder) => (
-                <CuteReminder
-                  key={reminder.id}
-                  title={reminder.title}
-                  message={reminder.message}
-                  emoji={reminder.emoji || "🌸"}
-                  time={reminder.schedule_time}
-                  days={reminder.days}
-                  onComplete={() => handleReminderComplete(reminder)}
-                  onDelete={() => handleDeleteReminder(reminder.id)}
-                />
-              ))
+              remindersToday.map((reminder) => {
+                const isCompleted = todayLogs.some(
+                  (l) => l.reminder_id === reminder.id && l.status === "completed"
+                );
+                const isReceived = todayLogs.some(
+                  (l) => l.reminder_id === reminder.id && l.status === "sent"
+                );
+                return (
+                  <CuteReminder
+                    key={reminder.id}
+                    title={reminder.title}
+                    message={reminder.message}
+                    emoji={reminder.emoji || "🌸"}
+                    time={reminder.schedule_time}
+                    days={reminder.days}
+                    isReceived={isReceived}
+                    isCompleted={isCompleted}
+                    onComplete={() => handleReminderComplete(reminder)}
+                    onDelete={() => handleDeleteReminder(reminder.id)}
+                  />
+                );
+              })
             )}
           </div>
         </div>
@@ -310,10 +329,53 @@ export default function DashboardPage() {
             
             <p className="text-xs text-[#A19AA8] font-inter leading-relaxed">
               {isPartner
-                ? `Sona completed ${completedCount} reminders today. Keeping her safe & healthy! ❤️`
-                : `You completed ${completedCount} reminders today. Stay gentle with yourself!`
+                ? `Sona completed ${completedTodayCount} reminders today. Keeping her safe & healthy! ❤️`
+                : `You completed ${completedTodayCount} reminders today. Stay gentle with yourself!`
               }
             </p>
+          </GlassCard>
+
+          {/* Today's Nudge Checklist Card */}
+          <GlassCard glowColor="pink" className="flex flex-col gap-4 border border-[#FF7597]/25">
+            <h3 className="font-bold font-outfit text-md text-white flex items-center gap-1.5">
+              <span>Today's Nudge Checklist 📋</span>
+            </h3>
+            <div className="flex flex-col gap-2">
+              {remindersToday.length === 0 ? (
+                <div className="text-center py-4 text-xs text-[#A19AA8] italic">
+                  No nudges scheduled for today.
+                </div>
+              ) : (
+                remindersToday.map((rem) => {
+                  const isCompleted = todayLogs.some((l) => l.reminder_id === rem.id && l.status === "completed");
+                  const isReceived = todayLogs.some((l) => l.reminder_id === rem.id && l.status === "sent");
+                  
+                  return (
+                    <div key={rem.id} className="flex justify-between items-center text-xs p-3 bg-white/3 border border-white/5 rounded-2xl">
+                      <div>
+                        <h4 className="font-bold text-white font-outfit">{rem.title}</h4>
+                        <p className="text-[10px] text-[#A19AA8] font-inter mt-0.5">{rem.schedule_time}</p>
+                      </div>
+                      <div>
+                        {isCompleted ? (
+                          <span className="text-[#67E8A5] bg-[#67E8A5]/10 border border-[#67E8A5]/20 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">
+                            Done ✅
+                          </span>
+                        ) : isReceived ? (
+                          <span className="text-[#9B86FA] bg-[#9B86FA]/10 border border-[#9B86FA]/20 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider animate-pulse shadow-[0_0_10px_rgba(155,134,250,0.15)]">
+                            Received 🔔
+                          </span>
+                        ) : (
+                          <span className="text-[#A19AA8] bg-white/5 border border-white/5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">
+                            Pending ⏳
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </GlassCard>
 
           {/* Achievements Card */}

@@ -26,6 +26,7 @@ class ReminderBase(BaseModel):
     title: str
     message: Optional[str] = None
     schedule_time: str = Field(..., description="HH:MM format")
+    days: Optional[str] = "Daily"
     is_active: Optional[bool] = True
 
 class ReminderCreate(ReminderBase):
@@ -35,6 +36,7 @@ class ReminderUpdate(BaseModel):
     title: Optional[str] = None
     message: Optional[str] = None
     schedule_time: Optional[str] = None
+    days: Optional[str] = None
     is_active: Optional[bool] = None
 
 class ReminderResponse(ReminderBase):
