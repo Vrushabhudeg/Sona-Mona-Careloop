@@ -46,6 +46,7 @@ interface ReminderContextType {
   loadingReminders: boolean;
   fetchReminders: () => Promise<void>;
   handleAddReminder: (newR: { title: string; message: string; schedule_time: string; days?: string }) => Promise<void>;
+  handleUpdateReminder: (reminderId: string, updatedFields: Partial<Reminder>) => Promise<void>;
   handleReminderComplete: (reminder: Reminder) => Promise<void>;
   handleDeleteReminder: (reminderId: string) => Promise<void>;
   snoozeReminder: (reminder: Reminder) => void;
@@ -60,6 +61,7 @@ const ReminderContext = createContext<ReminderContextType>({
   loadingReminders: true,
   fetchReminders: async () => {},
   handleAddReminder: async () => {},
+  handleUpdateReminder: async () => {},
   handleReminderComplete: async () => {},
   handleDeleteReminder: async () => {},
   snoozeReminder: () => {},
@@ -129,6 +131,20 @@ function parseScheduleTime(timeStr: string) {
   }
 }
 
+function getEmojiForTitle(title: string): string {
+  const t = title.toLowerCase();
+  if (t.includes("water") || t.includes("hydration") || t.includes("drink")) return "💧";
+  if (t.includes("fruit")) return "🍎";
+  if (t.includes("dinner")) return "🍽️";
+  if (t.includes("walk")) return "🚶";
+  if (t.includes("sleep") || t.includes("bed")) return "🛌";
+  if (t.includes("breakfast")) return "🍳";
+  if (t.includes("lunch")) return "🍱";
+  if (t.includes("office") || t.includes("arrival")) return "🏢";
+  if (t.includes("leave") || t.includes("car")) return "🚗";
+  return "🌸";
+}
+
 export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -141,9 +157,19 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const userId = isPartner ? "d3b07384-d113-4ec6-a558-7e3077dd7d7b" : (user?.id || "d3b07384-d113-4ec6-a558-7e3077dd7d7b");
 
   const defaultReminders: Reminder[] = [
-    { id: "r1", title: "🏃 Night Walk", message: "Time for a gentle walk at night to clear your mind. 🌙", schedule_time: "10:00 PM", emoji: "🏃", is_active: true, days: "Daily" },
-    { id: "r2", title: "🛌 Time to Sleep", message: "Time to sleep! Sleep tight, Sona. 😴", schedule_time: "12:00 AM", emoji: "🛌", is_active: true, days: "Daily" },
-    { id: "r3", title: "🏢 WFO Meal & Hydration", message: "Don't skip meals in between meetings. Stay hydrated, and come home waiting... ❤️", schedule_time: "02:30 PM", emoji: "🏢", is_active: true, days: "Wed, Fri" },
+    // Mon, Tue, Thu
+    { id: "r_mon1", title: "💧 Morning Hydration", message: "Please drink lots of water to stay fresh and healthy! ❤️", schedule_time: "10:00 AM", emoji: "💧", is_active: true, days: "Mon, Tue, Thu" },
+    { id: "r_mon2", title: "🍎 Evening Fruit", message: "Time to eat a plate of fresh fruit and energize yourself. 🍓", schedule_time: "04:30 PM", emoji: "🍎", is_active: true, days: "Mon, Tue, Thu" },
+    { id: "r_mon3", title: "🍽️ Dinner Time", message: "Time to have dinner on time, please don't be late! Dinner is served. 🍲", schedule_time: "08:30 PM", emoji: "🍽️", is_active: true, days: "Mon, Tue, Thu" },
+    { id: "r_mon4", title: "🚶 Night Walk", message: "Let's go on a gentle night walk together to clear our minds! 🌙", schedule_time: "10:30 PM", emoji: "🚶", is_active: true, days: "Mon, Tue, Thu" },
+    { id: "r_mon5", title: "🛌 Time to Sleep", message: "Please go to sleep on time tonight. Sweet dreams, love! 😴", schedule_time: "12:00 AM", emoji: "🛌", is_active: true, days: "Mon, Tue, Thu" },
+    // Wed, Fri
+    { id: "r_wed1", title: "🍳 Healthy Breakfast", message: "Please have breakfast, don't leave on an empty stomach. 🥞", schedule_time: "10:00 AM", emoji: "🍳", is_active: true, days: "Wed, Fri" },
+    { id: "r_wed2", title: "🏢 Office Arrival", message: "Hope you reached safely.. have a beautiful day you beautiful, I'm proud of you. ❤️", schedule_time: "01:00 PM", emoji: "🏢", is_active: true, days: "Wed, Fri" },
+    { id: "r_wed3", title: "🍱 Office Lunch", message: "Please don't forget your lunch in your hectic meetings. Eat well! 🥗", schedule_time: "02:30 PM", emoji: "🍱", is_active: true, days: "Wed, Fri" },
+    { id: "r_wed4", title: "💧 Office Hydration", message: "Please stay hydrated. Keep a water bottle close! 🥛", schedule_time: "04:00 PM", emoji: "💧", is_active: true, days: "Wed, Fri" },
+    { id: "r_wed5", title: "🚗 Leave Office", message: "Hope you left the office, please be careful don't rush. I'm waiting.... and not the last but the least, I'm proud of you ❤️", schedule_time: "09:00 PM", emoji: "🚗", is_active: true, days: "Wed, Fri" },
+    { id: "r_wed6", title: "🛌 Time to Sleep (Office Day)", message: "Please sleep on time tonight. Rest well! 😴", schedule_time: "12:00 AM", emoji: "🛌", is_active: true, days: "Wed, Fri" },
   ];
 
   // Request browser Notification permissions on mount
@@ -165,7 +191,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           title: r.title,
           message: r.message,
           schedule_time: r.schedule_time,
-          emoji: r.title.toLowerCase().includes("walk") ? "🏃" : r.title.toLowerCase().includes("sleep") ? "🛌" : "🌸",
+          emoji: getEmojiForTitle(r.title),
           is_active: r.is_active,
           days: r.days || "Daily",
         }));
@@ -272,7 +298,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       title: newR.title,
       message: newR.message,
       schedule_time: newR.schedule_time,
-      emoji: "🌸",
+      emoji: getEmojiForTitle(newR.title),
       is_active: true,
       days: newR.days || "Daily",
     };
@@ -295,6 +321,34 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await fetchReminders();
     } catch (err) {
       console.warn("Could not save new reminder to FastAPI database.");
+    }
+  };
+
+  const handleUpdateReminder = async (reminderId: string, updatedFields: Partial<Reminder>) => {
+    // Optimistic update
+    setReminders((prev) =>
+      prev.map((r) =>
+        r.id === reminderId
+          ? {
+              ...r,
+              ...updatedFields,
+              emoji: updatedFields.title ? getEmojiForTitle(updatedFields.title) : r.emoji,
+            }
+          : r
+      )
+    );
+
+    try {
+      await axios.put(`${API_BASE_URL}/api/reminders/${reminderId}`, {
+        title: updatedFields.title,
+        message: updatedFields.message,
+        schedule_time: updatedFields.schedule_time,
+        days: updatedFields.days,
+        is_active: updatedFields.is_active,
+      });
+      await fetchReminders();
+    } catch (err) {
+      console.warn("Could not save updated reminder to FastAPI database.");
     }
   };
 
@@ -393,6 +447,7 @@ export const ReminderProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         loadingReminders,
         fetchReminders,
         handleAddReminder,
+        handleUpdateReminder,
         handleReminderComplete,
         handleDeleteReminder,
         snoozeReminder,

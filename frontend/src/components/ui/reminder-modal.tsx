@@ -1,22 +1,51 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Reminder } from "@/context/reminder-context";
 
 interface ReminderModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: { title: string; message: string; schedule_time: string; days?: string }) => void;
+  editReminder?: Reminder | null;
 }
 
-export const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, onSubmit }) => {
+export const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, onSubmit, editReminder = null }) => {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [time, setTime] = useState("08:00");
   const [period, setPeriod] = useState<"AM" | "PM">("AM");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (editReminder) {
+      setTitle(editReminder.title);
+      setMessage(editReminder.message || "");
+      const timeParts = editReminder.schedule_time.split(" ");
+      if (timeParts.length === 2) {
+        setTime(timeParts[0]);
+        setPeriod(timeParts[1].toUpperCase() as "AM" | "PM");
+      } else {
+        setTime(editReminder.schedule_time);
+        setPeriod("AM");
+      }
+      const daysStr = editReminder.days || "Daily";
+      if (daysStr === "Daily" || daysStr === "Everyday") {
+        setSelectedDays(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+      } else {
+        setSelectedDays(daysStr.split(",").map((d) => d.trim()));
+      }
+    } else {
+      setTitle("");
+      setMessage("");
+      setTime("08:00");
+      setPeriod("AM");
+      setSelectedDays([]);
+    }
+  }, [editReminder, isOpen]);
 
   // Client-side AI Simulation for generating heartwarming nudges
   const handleAIGenerate = () => {
@@ -87,7 +116,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, o
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold font-outfit text-white flex items-center gap-1.5">
-                🌸 Create Cute Reminder
+                {editReminder ? "🌸 Edit Nudge" : "🌸 Create Cute Reminder"}
               </h3>
               <button
                 onClick={onClose}
@@ -229,7 +258,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, o
                 className="w-full py-3.5 mt-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#FF7597] to-[#9B86FA] hover:opacity-95 transition-opacity flex items-center justify-center gap-1.5 cursor-pointer shadow-md cute-shadow-pink"
               >
                 <Sparkles size={12} />
-                Create Reminder
+                {editReminder ? "Save Changes" : "Create Reminder"}
               </button>
             </form>
           </motion.div>

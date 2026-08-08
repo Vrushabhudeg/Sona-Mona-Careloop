@@ -54,7 +54,7 @@ export default function AdminDashboardPage() {
 
   const [users, setUsers] = useState<AdminProfile[]>([]);
   const [search, setSearch] = useState("");
-  const [targetUser, setTargetUser] = useState("");
+  const [targetUser, setTargetUser] = useState("d3b07384-d113-4ec6-a558-7e3077dd7d7b");
   const [nudgeTitle, setNudgeTitle] = useState("");
   const [nudgeMsg, setNudgeMsg] = useState("");
   const [nudgeEmoji, setNudgeEmoji] = useState("🌸");
@@ -72,24 +72,29 @@ export default function AdminDashboardPage() {
 
 
   const defaultUsers: AdminProfile[] = [
-    { id: "u1", full_name: "Sona", email: "sona@careloop.app", role: "User", reminders_count: 4, joined: "2026-07-28" },
-    { id: "u2", full_name: "David Miller", email: "david@bloom.io", role: "User", reminders_count: 3, joined: "2026-07-29" },
-    { id: "u3", full_name: "Emily Watson", email: "emily@wellness.com", role: "User", reminders_count: 5, joined: "2026-07-30" },
-    { id: "u4", full_name: "Alex Rivera", email: "alex@careloop.app", role: "Admin", reminders_count: 2, joined: "2026-07-25" },
+    { id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", full_name: "Sona", email: "sona@careloop.app", role: "User", reminders_count: 11, joined: "2026-07-28" },
+    { id: "5f8288b8-0c6e-4e4b-b0b3-f6cd64d5ee2c", full_name: "Vrushabh", email: "vrushabh@careloop.app", role: "Partner", reminders_count: 0, joined: "2026-07-28" },
   ];
 
   const defaultLogs: AdminLog[] = [
     { id: "l1", user_name: "Sona", action: "Completed 'Morning Hydration'", time: "Just now", type: "completed" },
-    { id: "l2", user_name: "David Miller", action: "Snoozed 'Morning Stretch'", time: "4 mins ago", type: "snoozed" },
-    { id: "l3", user_name: "Emily Watson", action: "Logged meal 'Avocado Salad Toast'", time: "12 mins ago", type: "nutrition" },
-    { id: "l4", user_name: "Sona", action: "Completed 'Healthy Lunch'", time: "1 hr ago", type: "completed" },
+    { id: "l4", user_name: "Sona", action: "Completed 'Dinner Time'", time: "1 hr ago", type: "completed" },
   ];
 
   const defaultReminders: AdminReminder[] = [
-    { id: "r1", user_id: "u1", user_name: "Sona", title: "🏃 Night Walk", message: "Time for a gentle walk at night to clear your mind. 🌙", schedule_time: "10:00 PM", is_active: true },
-    { id: "r2", user_id: "u1", user_name: "Sona", title: "🛌 Time to Sleep", message: "Time to sleep! Sleep tight, Sona. 😴", schedule_time: "12:00 AM", is_active: true },
-    { id: "r3", user_id: "u2", user_name: "David Miller", title: "💧 Hydration Break", message: "Drink a glass of water. Stay fresh!", schedule_time: "11:00 AM", is_active: true },
-    { id: "r4", user_id: "u3", user_name: "Emily Watson", title: "🧘 Stretch & Breathe", message: "5 minutes of stretching to relax your spine.", schedule_time: "03:30 PM", is_active: true },
+    // Mon, Tue, Thu
+    { id: "r_mon1", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "💧 Morning Hydration", message: "Please drink lots of water to stay fresh and healthy! ❤️", schedule_time: "10:00 AM", days: "Mon, Tue, Thu", is_active: true },
+    { id: "r_mon2", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "🍎 Evening Fruit", message: "Time to eat a plate of fresh fruit and energize yourself. 🍓", schedule_time: "04:30 PM", days: "Mon, Tue, Thu", is_active: true },
+    { id: "r_mon3", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "🍽️ Dinner Time", message: "Time to have dinner on time, please don't be late! Dinner is served. 🍲", schedule_time: "08:30 PM", days: "Mon, Tue, Thu", is_active: true },
+    { id: "r_mon4", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "🚶 Night Walk", message: "Let's go on a gentle night walk together to clear our minds! 🌙", schedule_time: "10:30 PM", days: "Mon, Tue, Thu", is_active: true },
+    { id: "r_mon5", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "🛌 Time to Sleep", message: "Please go to sleep on time tonight. Sweet dreams, love! 😴", schedule_time: "12:00 AM", days: "Mon, Tue, Thu", is_active: true },
+    // Wed, Fri
+    { id: "r_wed1", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "🍳 Healthy Breakfast", message: "Please have breakfast, don't leave on an empty stomach. 🥞", schedule_time: "10:00 AM", days: "Wed, Fri", is_active: true },
+    { id: "r_wed2", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "🏢 Office Arrival", message: "Hope you reached safely.. have a beautiful day you beautiful, I'm proud of you. ❤️", schedule_time: "01:00 PM", days: "Wed, Fri", is_active: true },
+    { id: "r_wed3", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "🍱 Office Lunch", message: "Please don't forget your lunch in your hectic meetings. Eat well! 🥗", schedule_time: "02:30 PM", days: "Wed, Fri", is_active: true },
+    { id: "r_wed4", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "💧 Office Hydration", message: "Please stay hydrated. Keep a water bottle close! 🥛", schedule_time: "04:00 PM", days: "Wed, Fri", is_active: true },
+    { id: "r_wed5", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "🚗 Leave Office", message: "Hope you left the office, please be careful don't rush. I'm waiting.... and not the last but the least, I'm proud of you ❤️", schedule_time: "09:00 PM", days: "Wed, Fri", is_active: true },
+    { id: "r_wed6", user_id: "d3b07384-d113-4ec6-a558-7e3077dd7d7b", user_name: "Sona", title: "🛌 Time to Sleep (Office Day)", message: "Please sleep on time tonight. Rest well! 😴", schedule_time: "12:00 AM", days: "Wed, Fri", is_active: true },
   ];
 
   // Fetch admin profiles from backend
@@ -290,7 +295,7 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <h4 className="text-[10px] uppercase font-bold text-[#A19AA8] tracking-wider">Total Users</h4>
-            <p className="text-xl font-bold text-white font-outfit mt-0.5">{users.length || 142}</p>
+            <p className="text-xl font-bold text-white font-outfit mt-0.5">{users.length}</p>
           </div>
         </GlassCard>
 
@@ -300,7 +305,7 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <h4 className="text-[10px] uppercase font-bold text-[#A19AA8] tracking-wider">Active Reminders</h4>
-            <p className="text-xl font-bold text-white font-outfit mt-0.5">384</p>
+            <p className="text-xl font-bold text-white font-outfit mt-0.5">{reminders.filter(r => r.is_active).length}</p>
           </div>
         </GlassCard>
 
@@ -367,17 +372,9 @@ export default function AdminDashboardPage() {
           <form onSubmit={handleSendNudge} className="flex flex-col gap-3.5 mt-2">
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-bold text-[#A19AA8] uppercase">Target User</label>
-              <select
-                required
-                value={targetUser}
-                onChange={(e) => setTargetUser(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-[#F3F1F6] focus:outline-none"
-              >
-                <option value="">Select a user...</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.full_name}</option>
-                ))}
-              </select>
+              <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-[#F3F1F6] font-bold select-none">
+                Sona ❤️
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-2">

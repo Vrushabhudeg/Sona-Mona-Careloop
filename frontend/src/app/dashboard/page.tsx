@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Sparkles, Plus, Flame, Clock, LogOut, Award, Smartphone, Bell, Share2 } from "lucide-react";
+import { Heart, Sparkles, Plus, Flame, Clock, LogOut, Award, Smartphone, Bell, Share2, Edit2, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useReminders, Reminder, ActivityLog } from "@/context/reminder-context";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -12,6 +12,7 @@ import { CuteReminder } from "@/components/ui/cute-reminder";
 import { ReminderModal } from "@/components/ui/reminder-modal";
 import { CuteSonaMonaNote } from "@/components/ui/cute-sona-mona-note";
 import { AppLogo } from "@/components/ui/app-logo";
+import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import axios from "axios";
 
@@ -24,12 +25,15 @@ export default function DashboardPage() {
     logs,
     loadingReminders,
     handleAddReminder,
+    handleUpdateReminder,
     handleReminderComplete,
     handleDeleteReminder,
     subscribeToPushNotifications,
   } = useReminders();
   
   const [showAddModal, setShowAddModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"today" | "weekly">("today");
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [pushStatus, setPushStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [pushMessage, setPushMessage] = useState("");
   const [testLoading, setTestLoading] = useState(false);
@@ -98,8 +102,23 @@ export default function DashboardPage() {
     : 0;
 
   const handleCreateReminder = async (newR: { title: string; message: string; schedule_time: string; days?: string }) => {
-    await handleAddReminder(newR);
+    if (editingReminder) {
+      await handleUpdateReminder(editingReminder.id, newR);
+      setEditingReminder(null);
+    } else {
+      await handleAddReminder(newR);
+    }
     setShowAddModal(false);
+  };
+
+  const handleOpenEditModal = (reminder: Reminder) => {
+    setEditingReminder(reminder);
+    setShowAddModal(true);
+  };
+
+  const handleOpenCreateModal = () => {
+    setEditingReminder(null);
+    setShowAddModal(true);
   };
 
   // Big confetti if hitting 100% completion
@@ -123,6 +142,83 @@ export default function DashboardPage() {
     { id: "a2", name: "💧 Super Hydrator", desc: "Drank at least 1 liter of water", unlocked: todayLogs.some(l => l.title.includes("Hydration")) },
     { id: "a3", name: "🏆 Perfect Score", desc: "Completed all reminders today!", unlocked: progressPercent === 100 },
   ];
+
+  const monTueThuReminders = reminders.filter(r => r.days?.toLowerCase().includes("mon") || r.days?.toLowerCase().includes("tue") || r.days?.toLowerCase().includes("thu"));
+  const wedFriReminders = reminders.filter(r => r.days?.toLowerCase().includes("wed") || r.days?.toLowerCase().includes("fri"));
+  const otherReminders = reminders.filter(r => 
+    !monTueThuReminders.some(m => m.id === r.id) && 
+    !wedFriReminders.some(w => w.id === r.id)
+  );
+
+  const renderWeeklyReminderItem = (rem: Reminder) => {
+    return (
+      <div 
+        key={rem.id}
+        className={cn(
+          "w-full glass rounded-2xl p-4 border relative overflow-hidden transition-all duration-300 flex items-center justify-between gap-4 border-white/5 hover:border-[#FF7597]/30",
+          !rem.is_active && "opacity-55"
+        )}
+      >
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className="text-2xl flex items-center justify-center bg-white/5 rounded-xl p-2 w-11 h-11 border border-white/5 shrink-0 select-none">
+            {rem.emoji || "🌸"}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="font-semibold text-white font-outfit text-sm truncate">{rem.title}</h4>
+              <span className="text-[9px] text-[#FF7597] bg-[#FF7597]/10 border border-[#FF7597]/20 px-2 py-0.5 rounded-full select-none font-bold uppercase">
+                {rem.days}
+              </span>
+              <span className="text-[10px] text-[#A19AA8] bg-white/5 px-2 py-0.5 rounded font-mono">
+                {rem.schedule_time}
+              </span>
+            </div>
+            <p className="text-xs text-[#A19AA8] mt-1 truncate" title={rem.message}>{rem.message}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              await handleUpdateReminder(rem.id, { is_active: !rem.is_active });
+            }}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer border",
+              rem.is_active
+                ? "bg-[#67E8A5]/10 text-[#67E8A5] border-[#67E8A5]/25 hover:bg-[#67E8A5]/20"
+                : "bg-white/5 text-[#A19AA8] border-white/5 hover:bg-white/10"
+            )}
+            title={rem.is_active ? "Pause Nudge" : "Activate Nudge"}
+          >
+            {rem.is_active ? "Active" : "Paused"}
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenEditModal(rem);
+            }}
+            className="p-2 rounded-xl bg-white/5 border border-white/5 text-[#A19AA8] hover:text-[#9B86FA] hover:bg-[#9B86FA]/10 transition-all cursor-pointer flex items-center justify-center"
+            title="Edit Nudge"
+          >
+            <Edit2 size={12} />
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteReminder(rem.id);
+            }}
+            className="p-2 rounded-xl bg-white/5 border border-white/5 text-[#A19AA8] hover:text-[#FF7597] hover:bg-[#FF7597]/10 transition-all cursor-pointer flex items-center justify-center"
+            title="Delete Nudge"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen py-10 px-6 max-w-5xl mx-auto flex flex-col gap-8 select-none">
@@ -174,7 +270,7 @@ export default function DashboardPage() {
         </div>
 
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={handleOpenCreateModal}
           className="py-3 px-6 rounded-2xl font-bold text-xs text-white bg-gradient-to-r from-[#FF7597] to-[#9B86FA] hover:opacity-95 active:scale-95 transition-all duration-150 flex items-center gap-1.5 shadow-md cute-shadow-pink cursor-pointer"
         >
           <Plus size={16} /> Create Nudge
@@ -186,46 +282,117 @@ export default function DashboardPage() {
         
         {/* Core Task List */}
         <div className="md:col-span-2 flex flex-col gap-4">
-          <h3 className="font-bold font-outfit text-lg text-white px-1 flex items-center justify-between">
-            <span>{isPartner ? "Sona's Active Nudges 🌸" : "Active Nudges"}</span>
-            {isPartner && (
-              <span className="text-[10px] text-[#9B86FA] bg-[#9B86FA]/10 border border-[#9B86FA]/20 px-2 py-0.5 rounded-full select-none font-bold uppercase">
-                Caregiver Mode
-              </span>
-            )}
-          </h3>
+          <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-1 flex-wrap gap-2">
+            <h3 className="font-bold font-outfit text-lg text-white px-1 flex items-center gap-2">
+              <span>{isPartner ? "Sona's Nudges 🌸" : "Active Nudges"}</span>
+              {isPartner && (
+                <span className="text-[10px] text-[#9B86FA] bg-[#9B86FA]/10 border border-[#9B86FA]/20 px-2 py-0.5 rounded-full select-none font-bold uppercase">
+                  Caregiver Mode
+                </span>
+              )}
+            </h3>
+            
+            <div className="flex bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
+              <button
+                onClick={() => setActiveTab("today")}
+                className={cn(
+                  "px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                  activeTab === "today" ? "bg-gradient-to-r from-[#FF7597] to-[#9B86FA] text-white" : "text-[#A19AA8] hover:text-white"
+                )}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setActiveTab("weekly")}
+                className={cn(
+                  "px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                  activeTab === "weekly" ? "bg-gradient-to-r from-[#FF7597] to-[#9B86FA] text-white" : "text-[#A19AA8] hover:text-white"
+                )}
+              >
+                Weekly Schedule
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-4">
             {loadingReminders ? (
               <div className="text-center py-8 text-xs text-[#A19AA8] animate-pulse">
                 Loading active nudges... 🌸
               </div>
-            ) : remindersToday.length === 0 ? (
-              <div className="text-center py-10 border border-white/5 bg-white/3 rounded-2xl text-xs text-[#A19AA8]">
-                No nudges scheduled for today! ❤️
-              </div>
+            ) : activeTab === "today" ? (
+              remindersToday.length === 0 ? (
+                <div className="text-center py-10 border border-white/5 bg-white/3 rounded-2xl text-xs text-[#A19AA8]">
+                  No nudges scheduled for today! ❤️
+                </div>
+              ) : (
+                remindersToday.map((reminder) => {
+                  const isCompleted = todayLogs.some(
+                    (l) => l.reminder_id === reminder.id && l.status === "completed"
+                  );
+                  const isReceived = todayLogs.some(
+                    (l) => l.reminder_id === reminder.id && l.status === "sent"
+                  );
+                  return (
+                    <CuteReminder
+                      key={reminder.id}
+                      title={reminder.title}
+                      message={reminder.message}
+                      emoji={reminder.emoji || "🌸"}
+                      time={reminder.schedule_time}
+                      days={reminder.days}
+                      isReceived={isReceived}
+                      isCompleted={isCompleted}
+                      onComplete={() => handleReminderComplete(reminder)}
+                      onDelete={() => handleDeleteReminder(reminder.id)}
+                    />
+                  );
+                })
+              )
             ) : (
-              remindersToday.map((reminder) => {
-                const isCompleted = todayLogs.some(
-                  (l) => l.reminder_id === reminder.id && l.status === "completed"
-                );
-                const isReceived = todayLogs.some(
-                  (l) => l.reminder_id === reminder.id && l.status === "sent"
-                );
-                return (
-                  <CuteReminder
-                    key={reminder.id}
-                    title={reminder.title}
-                    message={reminder.message}
-                    emoji={reminder.emoji || "🌸"}
-                    time={reminder.schedule_time}
-                    days={reminder.days}
-                    isReceived={isReceived}
-                    isCompleted={isCompleted}
-                    onComplete={() => handleReminderComplete(reminder)}
-                    onDelete={() => handleDeleteReminder(reminder.id)}
-                  />
-                );
-              })
+              // Weekly Schedule View
+              <div className="flex flex-col gap-6">
+                {/* Mon, Tue, Thu Group */}
+                {monTueThuReminders.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <h4 className="text-xs font-bold text-[#FF7597] uppercase tracking-wider px-1">
+                      Monday, Tuesday, Thursday Schedule 🌸
+                    </h4>
+                    <div className="flex flex-col gap-3">
+                      {monTueThuReminders.map((rem) => renderWeeklyReminderItem(rem))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Wed, Fri Group */}
+                {wedFriReminders.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <h4 className="text-xs font-bold text-[#9B86FA] uppercase tracking-wider px-1">
+                      Wednesday, Friday (Office Days) Schedule 🏢
+                    </h4>
+                    <div className="flex flex-col gap-3">
+                      {wedFriReminders.map((rem) => renderWeeklyReminderItem(rem))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom/Daily/Other Group */}
+                {otherReminders.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <h4 className="text-xs font-bold text-[#FFD075] uppercase tracking-wider px-1">
+                      Custom & Daily Schedule 🌟
+                    </h4>
+                    <div className="flex flex-col gap-3">
+                      {otherReminders.map((rem) => renderWeeklyReminderItem(rem))}
+                    </div>
+                  </div>
+                )}
+
+                {reminders.length === 0 && (
+                  <div className="text-center py-10 border border-white/5 bg-white/3 rounded-2xl text-xs text-[#A19AA8]">
+                    No reminders created yet! ❤️
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -447,8 +614,12 @@ export default function DashboardPage() {
       {/* Floating reminder creator dialog portal */}
       <ReminderModal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={() => {
+          setShowAddModal(false);
+          setEditingReminder(null);
+        }}
         onSubmit={handleCreateReminder}
+        editReminder={editingReminder}
       />
 
     </div>

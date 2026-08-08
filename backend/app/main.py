@@ -103,12 +103,7 @@ def seed_sona_reminders(db: Session):
     # Make sure Sona's profile exists
     ensure_profile_exists(db, sona_id)
     
-    # Check if Sona has any reminders
-    existing_count = db.query(models.Reminder).filter(models.Reminder.user_id == sona_id).count()
-    if existing_count > 0:
-        return
-        
-    # Seed reminders
+    # Seed reminders list
     seed_data = [
         # Mon, Tue, Thu
         {
@@ -181,18 +176,27 @@ def seed_sona_reminders(db: Session):
     ]
     
     for item in seed_data:
-        db_reminder = models.Reminder(
-            id=uuid4(),
-            user_id=sona_id,
-            title=item["title"],
-            message=item["message"],
-            schedule_time=item["schedule_time"],
-            days=item["days"],
-            is_active=True,
-            created_at=datetime.datetime.utcnow(),
-            updated_at=datetime.datetime.utcnow()
-        )
-        db.add(db_reminder)
+        # Check if this specific reminder exists
+        existing = db.query(models.Reminder).filter(
+            models.Reminder.user_id == sona_id,
+            models.Reminder.title == item["title"],
+            models.Reminder.schedule_time == item["schedule_time"],
+            models.Reminder.days == item["days"]
+        ).first()
+        
+        if not existing:
+            db_reminder = models.Reminder(
+                id=uuid4(),
+                user_id=sona_id,
+                title=item["title"],
+                message=item["message"],
+                schedule_time=item["schedule_time"],
+                days=item["days"],
+                is_active=True,
+                created_at=datetime.datetime.utcnow(),
+                updated_at=datetime.datetime.utcnow()
+            )
+            db.add(db_reminder)
     db.commit()
 
 def check_active_reminders_and_send(db: Session):
@@ -477,27 +481,29 @@ def update_profile(user_id: UUID, data: schemas.ProfileBase, db: Session = Depen
 @app.get("/api/admin/profiles", response_model=List[schemas.ProfileResponse])
 def admin_get_profiles(db: Session = Depends(get_db)):
     try:
-        profiles = db.query(models.Profile).all()
+        sona_id = UUID("d3b07384-d113-4ec6-a558-7e3077dd7d7b")
+        vrushabh_id = UUID("5f8288b8-0c6e-4e4b-b0b3-f6cd64d5ee2c")
+        profiles = db.query(models.Profile).filter(models.Profile.id.in_([sona_id, vrushabh_id])).all()
         if not profiles:
-            # Return mock data list for local design sandboxes
             return [
-                {"id": uuid4(), "email": "sarah@careloop.app", "full_name": "Sarah Andrews", "avatar_url": "", "role": "user", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
-                {"id": uuid4(), "email": "david@bloom.io", "full_name": "David Miller", "avatar_url": "", "role": "user", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
-                {"id": uuid4(), "email": "emily@wellness.com", "full_name": "Emily Watson", "avatar_url": "", "role": "user", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
+                {"id": sona_id, "email": "sona@careloop.app", "full_name": "Sona", "avatar_url": "", "role": "user", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
+                {"id": vrushabh_id, "email": "vrushabh@careloop.app", "full_name": "Vrushabh", "avatar_url": "", "role": "partner", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
             ]
         return profiles
     except Exception:
+        sona_id = UUID("d3b07384-d113-4ec6-a558-7e3077dd7d7b")
+        vrushabh_id = UUID("5f8288b8-0c6e-4e4b-b0b3-f6cd64d5ee2c")
         return [
-            {"id": uuid4(), "email": "sarah@careloop.app", "full_name": "Sarah Andrews", "avatar_url": "", "role": "user", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
-            {"id": uuid4(), "email": "david@bloom.io", "full_name": "David Miller", "avatar_url": "", "role": "user", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
-            {"id": uuid4(), "email": "emily@wellness.com", "full_name": "Emily Watson", "avatar_url": "", "role": "user", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
+            {"id": sona_id, "email": "sona@careloop.app", "full_name": "Sona", "avatar_url": "", "role": "user", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
+            {"id": vrushabh_id, "email": "vrushabh@careloop.app", "full_name": "Vrushabh", "avatar_url": "", "role": "partner", "created_at": datetime.datetime.utcnow(), "updated_at": datetime.datetime.utcnow()},
         ]
 
 # --- ADMIN REMINDERS DIRECTORY ---
 @app.get("/api/admin/reminders", response_model=List[schemas.ReminderResponse])
 def admin_get_all_reminders(db: Session = Depends(get_db)):
     try:
-        reminders = db.query(models.Reminder).all()
+        sona_id = UUID("d3b07384-d113-4ec6-a558-7e3077dd7d7b")
+        reminders = db.query(models.Reminder).filter(models.Reminder.user_id == sona_id).all()
         return reminders
     except Exception:
         return []
